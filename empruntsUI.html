@@ -37,25 +37,134 @@
           
           <div class="alert alert-info mt-3">
             <i class="fas fa-info-circle me-2"></i>
-            Cette page est en cours de développement. Pour l'instant, elle affiche une liste d'emprunts fictifs.
+            Cette page est en cours de développement. Pour l'instant, elle affiche une liste d'emprunts fictifs 
+            et permet de créer de nouveaux emprunts.
           </div>
         </div>
       </div>
     </div>
   </div>
+   <div class="modal fade" id="empruntModal" tabindex="-1" aria-labelledby="empruntModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="empruntModalLabel">Nouvel emprunt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <form id="empruntForm">
+            <input type="hidden" id="empruntId" value="">
+            
+            <!-- Informations générales -->
+            <div class="card mb-3">
+              <div class="card-header bg-light">
+                <i class="fas fa-info-circle me-2"></i> Informations générales
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <label for="empruntNom" class="form-label">Nom de la manipulation *</label>
+                    <input type="text" class="form-control" id="empruntNom" required>
+                  </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <label for="empruntLieu" class="form-label">Lieu de la manipulation *</label>
+                    <input type="text" class="form-control" id="empruntLieu" required>
+                  </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="empruntDateDepart" class="form-label">Date de départ *</label>
+                    <input type="date" class="form-control" id="empruntDateDepart" required>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="empruntDateRetour" class="form-label">Date de retour prévue *</label>
+                    <input type="date" class="form-control" id="empruntDateRetour" required>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Responsables -->
+            <div class="card mb-3">
+              <div class="card-header bg-light">
+                <i class="fas fa-user me-2"></i> Responsables
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="empruntSecteur" class="form-label">Secteur *</label>
+                    <select class="form-select" id="empruntSecteur" required>
+                      <option value="">Sélectionner...</option>
+                      <option value="Astronomie">Astronomie</option>
+                      <option value="Environnement">Environnement</option>
+                      <option value="Robotique">Robotique</option>
+                      <option value="Sciences">Sciences</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="empruntReferent" class="form-label">Référent *</label>
+                    <input type="text" class="form-control" id="empruntReferent" required>
+                  </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <label for="empruntEmprunteur" class="form-label">Emprunteur *</label>
+                    <input type="text" class="form-control" id="empruntEmprunteur" required>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="text-end">
+              <small class="text-muted">* Champs obligatoires</small>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-primary" id="saveEmprunt">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  
 </div>
 
 <script>
   // Fonction d'initialisation de la page Emprunts
   function initializeEmpruntsPage() {
-    console.log('Initialisation de la page Emprunts - Version de test');
+  console.log('Initialisation de la page Emprunts - Version avec formulaire');
+  
+  // Arrêter le spinner de chargement s'il est visible
+  if (typeof hideSpinner === 'function') {
+    hideSpinner();
+  } else {
+    console.error("La fonction hideSpinner n'est pas définie");
+    // Essai de masquage direct
+    const spinner = document.getElementById('spinnerOverlay');
+    if (spinner) spinner.style.display = 'none';
+  }
+  
+  // Suite du code...
     
     // Afficher des données fictives pour tester l'affichage
     showFakeEmpruntsData();
     
     // Configurer le bouton "Nouvel emprunt"
     document.getElementById('btnNouvelEmprunt').addEventListener('click', function() {
-      alert('Fonctionnalité "Nouvel emprunt" à implémenter prochainement');
+      openEmpruntForm();
+    });
+    
+    // Configurer le bouton "Enregistrer" du formulaire
+    document.getElementById('saveEmprunt').addEventListener('click', function() {
+      saveEmpruntForm();
     });
   }
   
@@ -131,5 +240,112 @@
       case "Inventorié": return "bg-secondary";
       default: return "bg-secondary";
     }
+  }
+  
+  // Fonction pour ouvrir le formulaire d'emprunt (création ou modification)
+  function openEmpruntForm(empruntData = null) {
+    // Réinitialiser le formulaire
+    document.getElementById('empruntForm').reset();
+    document.getElementById('empruntId').value = '';
+    
+    // Préremplir avec la date du jour pour le départ et retour (+14 jours)
+    const today = new Date();
+    const returnDate = new Date();
+    returnDate.setDate(today.getDate() + 14); // 2 semaines plus tard par défaut
+    
+    document.getElementById('empruntDateDepart').value = formatDateForInput(today);
+    document.getElementById('empruntDateRetour').value = formatDateForInput(returnDate);
+    
+    if (empruntData) {
+      // Mode édition (à implémenter plus tard)
+      document.getElementById('empruntModalLabel').textContent = 'Modifier un emprunt';
+    } else {
+      // Mode création
+      document.getElementById('empruntModalLabel').textContent = 'Nouvel emprunt';
+    }
+    
+    // Afficher le modal
+    const modal = new bootstrap.Modal(document.getElementById('empruntModal'));
+    modal.show();
+  }
+  
+  // Fonction pour formater une date pour les inputs de type date (YYYY-MM-DD)
+  function formatDateForInput(date) {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+    
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+    
+    return [year, month, day].join('-');
+  }
+  
+  // Fonction pour formater une date au format français (JJ/MM/AAAA)
+  function formatDateFR(dateStr) {
+    if (!dateStr) return '';
+    
+    // Si c'est déjà au format JJ/MM/AAAA, on le laisse tel quel
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      return dateStr;
+    }
+    
+    // Sinon on convertit
+    const d = new Date(dateStr);
+    let day = '' + d.getDate();
+    let month = '' + (d.getMonth() + 1);
+    const year = d.getFullYear();
+    
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+    
+    return [day, month, year].join('/');
+  }
+  
+  // Fonction pour sauvegarder les données du formulaire
+  function saveEmpruntForm() {
+    // Valider le formulaire
+    const form = document.getElementById('empruntForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    // Récupérer les données du formulaire
+    const empruntData = {
+      ID: document.getElementById('empruntId').value,
+      "Nom Manipulation": document.getElementById('empruntNom').value,
+      Lieu: document.getElementById('empruntLieu').value,
+      "Date départ": formatDateFR(document.getElementById('empruntDateDepart').value),
+      "Date retour": formatDateFR(document.getElementById('empruntDateRetour').value),
+      Secteur: document.getElementById('empruntSecteur').value,
+      Référent: document.getElementById('empruntReferent').value,
+      Emprunteur: document.getElementById('empruntEmprunteur').value
+    };
+    
+    // Afficher l'indicateur de chargement
+    showSpinner();
+    
+    // Envoyer les données au serveur
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideSpinner();
+        
+        // Fermer le modal
+        bootstrap.Modal.getInstance(document.getElementById('empruntModal')).hide();
+        
+        // Afficher un message de réussite
+        alert("Emprunt créé avec succès !");
+        
+        // Recharger la liste des emprunts (pour l'instant, on affiche juste les exemples)
+        showFakeEmpruntsData();
+      })
+      .withFailureHandler(function(error) {
+        hideSpinner();
+        console.error('Erreur lors de l\'enregistrement de l\'emprunt:', error);
+        alert('Erreur lors de l\'enregistrement de l\'emprunt: ' + error);
+      })
+      .saveEmpruntFromUI(empruntData);
   }
 </script>
