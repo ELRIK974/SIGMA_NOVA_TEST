@@ -1,0 +1,156 @@
+<div id="stockPage">
+  <h1 class="mb-4">
+    <i class="fas fa-warehouse me-2"></i>
+    État des stocks
+  </h1>
+  
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-boxes me-2"></i> Inventaire</span>
+          <div>
+            <button type="button" class="btn btn-success btn-sm me-2" id="btnNouvelArticle">
+              <i class="fas fa-plus me-1"></i> Nouvel article
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnExportStock">
+              <i class="fas fa-file-export me-1"></i> Exporter
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control" placeholder="Rechercher un article..." id="searchStock">
+              <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Filtrer</button>
+              <ul class="dropdown-menu dropdown-menu-end" id="stockFilterDropdown">
+                <li><a class="dropdown-item active" href="#" data-filter="Tous">Tous</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Consommable">Consommables</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Non consommable">Non consommables</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Stock critique">Stock critique</a></li>
+                <!-- Autres filtres ajoutés dynamiquement -->
+              </ul>
+            </div>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="stockTable">
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Catégorie</th>
+                  <th>Quantité</th>
+                  <th>Seuil alerte</th>
+                  <th>Localisation</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Sera rempli dynamiquement -->
+                <tr>
+                  <td colspan="6" class="text-center">Chargement des données...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <nav aria-label="Pagination des articles">
+            <ul class="pagination justify-content-center" id="stockPagination">
+              <!-- Sera rempli dynamiquement -->
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Formulaire d'ajout/modification d'article (intégré directement) -->
+  <div class="modal fade" id="stockItemModal" tabindex="-1" aria-labelledby="stockItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="stockItemModalLabel">Nouvel article</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <form id="stockItemForm">
+            <input type="hidden" id="stockItemId" value="">
+            
+            <div class="mb-3">
+              <label for="stockItemName" class="form-label">Nom de l'article *</label>
+              <input type="text" class="form-control" id="stockItemName" required>
+            </div>
+            
+            <div class="mb-3">
+              <label for="stockItemCategory" class="form-label">Catégorie *</label>
+              <select class="form-select" id="stockItemCategory" required>
+                <option value="">Sélectionner...</option>
+                <option value="Consommable">Consommable</option>
+                <option value="Non consommable">Non consommable</option>
+                <!-- Les autres catégories seront chargées dynamiquement -->
+              </select>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="stockItemQuantity" class="form-label">Quantité *</label>
+                <input type="number" class="form-control" id="stockItemQuantity" min="0" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="stockItemThreshold" class="form-label">Seuil d'alerte *</label>
+                <input type="number" class="form-control" id="stockItemThreshold" min="0" required>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="stockItemLocation" class="form-label">Localisation</label>
+              <input type="text" class="form-control" id="stockItemLocation" list="locationsList">
+              <datalist id="locationsList">
+                <!-- Les localisations seront chargées dynamiquement -->
+              </datalist>
+            </div>
+            
+            <div class="mb-3">
+              <label for="stockItemSupplierRef" class="form-label">Référence fournisseur</label>
+              <input type="text" class="form-control" id="stockItemSupplierRef">
+            </div>
+            
+            <div class="mb-3">
+              <label for="stockItemSupplierLink" class="form-label">Lien fournisseur</label>
+              <input type="url" class="form-control" id="stockItemSupplierLink" placeholder="https://">
+            </div>
+            
+            <div class="text-end">
+              <small class="text-muted">* Champs obligatoires</small>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-primary" id="saveStockItem">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation de suppression -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirmer la suppression</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <p>Êtes-vous sûr de vouloir supprimer cet article ?</p>
+          <p class="text-danger"><strong>Cette action est irréversible.</strong></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
