@@ -1,0 +1,246 @@
+<!-- Fonctions pour la page Gestion des Emprunts -->
+<script>
+// Variables globales pour la page Emprunts
+window.empruntCurrentPage = 1;
+window.empruntPageSize = 10;
+window.empruntCurrentFilter = 'Tous';
+window.empruntCurrentSearch = '';
+
+// Initialisation de la page Emprunts
+window.initializeEmpruntsPage = function() {
+  console.log('Initialisation de la page Emprunts - DÉBUT');
+  
+  try {
+    // Arrêter le spinner de chargement s'il est visible
+    if (typeof window.hideSpinner === 'function') {
+      window.hideSpinner();
+    }
+    
+    // Charger les données réelles des emprunts
+    loadEmpruntsData();
+    
+    // Configurer les gestionnaires d'événements
+    setupEmpruntsEventHandlers();
+    
+    console.log('Initialisation de la page Emprunts - FIN');
+  } catch (error) {
+    console.error('ERREUR dans initializeEmpruntsPage:', error);
+    alert('Erreur d\'initialisation: ' + error.message);
+  }
+};
+
+// Fonction pour charger les données des emprunts
+function loadEmpruntsData() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(data) {
+      window.hideSpinner();
+      console.log('Données emprunts reçues:', data);
+      
+      if (data && data.emprunts) {
+        fillEmpruntsTable(data.emprunts);
+        updateEmpruntsPagination(data.pagination);
+      } else {
+        console.error('Format de données incorrect:', data);
+        alert('Format de données incorrect reçu du serveur');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors du chargement des emprunts:', error);
+      window.hideSpinner();
+      alert('Erreur lors du chargement des emprunts: ' + error);
+    })
+    .getEmpruntsPageData(window.empruntCurrentPage, window.empruntPageSize, window.empruntCurrentFilter, window.empruntCurrentSearch);
+}
+
+// Configuration des gestionnaires d'événements pour la page Emprunts
+function setupEmpruntsEventHandlers() {
+  // Gestionnaire pour le bouton "Nouvel emprunt"
+  const btnNew = document.getElementById('btnNouvelEmprunt');
+  if (btnNew) {
+    btnNew.addEventListener('click', function() {
+      openEmpruntForm();
+    });
+  }
+  
+  // Gestionnaire pour le bouton d'enregistrement du formulaire
+  const btnSave = document.getElementById('saveEmprunt');
+  if (btnSave) {
+    btnSave.addEventListener('click', function() {
+      saveEmpruntForm();
+    });
+  }
+}
+
+// Remplir le tableau des emprunts
+function fillEmpruntsTable(emprunts) {
+  const tbody = document.querySelector('#empruntsTable tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (!emprunts || emprunts.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td colspan="6" class="text-center">Aucun emprunt trouvé</td>`;
+    tbody.appendChild(row);
+    return;
+  }
+  
+  emprunts.forEach(emprunt => {
+    const row = document.createElement('tr');
+    
+    // Ajouter une classe selon le statut
+    if (emprunt.Statut === "Pas prêt") {
+      row.classList.add('table-warning');
+    } else if (emprunt.Statut === "Parti") {
+      row.classList.add('table-info');
+    } else if (emprunt.Statut === "Revenu") {
+      row.classList.add('table-success');
+    }
+    
+    row.innerHTML = `
+      <td>${emprunt.ID || ''}</td>
+      <td>${emprunt["Nom Manipulation"] || ''}</td>
+      <td>${emprunt["Date départ"] || ''} - ${emprunt["Date retour"] || ''}</td>
+      <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ''}</span></td>
+      <td>${emprunt.Emprunteur || ''}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// Mettre à jour la pagination
+function updateEmpruntsPagination(pagination) {
+  // Code similaire à updatePagination pour le stock, à adapter
+  // Cette fonction sera développée ultérieurement
+  console.log('Pagination des emprunts à mettre en place:', pagination);
+}
+
+// Obtenir la classe de badge selon le statut
+function getBadgeClass(status) {
+  switch(status) {
+    case "Pas prêt": return "bg-warning text-dark";
+    case "Prêt": return "bg-success";
+    case "Parti": return "bg-primary";
+    case "Revenu": return "bg-info text-dark";
+    case "Inventorié": return "bg-secondary";
+    default: return "bg-secondary";
+  }
+}
+
+// Fonction pour ouvrir le formulaire d'emprunt (création ou modification)
+function openEmpruntForm(empruntData = null) {
+  // Réinitialiser le formulaire
+  document.getElementById('empruntForm').reset();
+  document.getElementById('empruntId').value = '';
+  
+  // Préremplir avec la date du jour pour le départ et retour (+14 jours)
+  const today = new Date();
+  const returnDate = new Date();
+  returnDate.setDate(today.getDate() + 14); // 2 semaines plus tard par défaut
+  
+  document.getElementById('empruntDateDepart').value = formatDateForInput(today);
+  document.getElementById('empruntDateRetour').value = formatDateForInput(returnDate);
+  
+  if (empruntData) {
+    // Mode édition (à implémenter plus tard)
+    document.getElementById('empruntModalLabel').textContent = 'Modifier un emprunt';
+  } else {
+    // Mode création
+    document.getElementById('empruntModalLabel').textContent = 'Nouvel emprunt';
+  }
+  
+  // Afficher le modal
+  const modal = new bootstrap.Modal(document.getElementById('empruntModal'));
+  modal.show();
+}
+
+// Fonction pour formater une date pour les inputs de type date (YYYY-MM-DD)
+function formatDateForInput(date) {
+  const d = new Date(date);
+  let month = '' + (d.getMonth() + 1);
+  let day = '' + d.getDate();
+  const year = d.getFullYear();
+  
+  if (month.length < 2) month = '0' + month;
+  if (day.length < 2) day = '0' + day;
+  
+  return [year, month, day].join('-');
+}
+
+// Fonction pour formater une date au format français (JJ/MM/AAAA)
+function formatDateFR(dateStr) {
+  if (!dateStr) return '';
+  
+  // Si c'est déjà au format JJ/MM/AAAA, on le laisse tel quel
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  // Sinon on convertit
+  const d = new Date(dateStr);
+  let day = '' + d.getDate();
+  let month = '' + (d.getMonth() + 1);
+  const year = d.getFullYear();
+  
+  if (month.length < 2) month = '0' + month;
+  if (day.length < 2) day = '0' + day;
+  
+  return [day, month, year].join('/');
+}
+
+// Fonction pour sauvegarder les données du formulaire
+function saveEmpruntForm() {
+  // Valider le formulaire
+  const form = document.getElementById('empruntForm');
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+  
+  // Récupérer les données du formulaire
+  const empruntData = {
+    ID: document.getElementById('empruntId').value,
+    "Nom Manipulation": document.getElementById('empruntNom').value,
+    Lieu: document.getElementById('empruntLieu').value,
+    "Date départ": formatDateFR(document.getElementById('empruntDateDepart').value),
+    "Date retour": formatDateFR(document.getElementById('empruntDateRetour').value),
+    Secteur: document.getElementById('empruntSecteur').value,
+    Référent: document.getElementById('empruntReferent').value,
+    Emprunteur: document.getElementById('empruntEmprunteur').value
+  };
+  
+  // Afficher l'indicateur de chargement
+  window.showSpinner();
+  
+  // Envoyer les données au serveur
+  google.script.run
+    .withSuccessHandler(function(result) {
+      window.hideSpinner();
+      
+      // Fermer le modal
+      bootstrap.Modal.getInstance(document.getElementById('empruntModal')).hide();
+      
+      // Afficher un message de réussite
+      alert("Emprunt créé avec succès !");
+      
+      // Recharger la liste des emprunts
+      loadEmpruntsData();
+    })
+    .withFailureHandler(function(error) {
+      window.hideSpinner();
+      console.error('Erreur lors de l\'enregistrement de l\'emprunt:', error);
+      alert('Erreur lors de l\'enregistrement de l\'emprunt: ' + error);
+    })
+    .saveEmpruntFromUI(empruntData);
+}
+</script>
