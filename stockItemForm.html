@@ -1,0 +1,67 @@
+<div class="modal fade" id="stockItemModal" tabindex="-1" aria-labelledby="stockItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="stockItemModalLabel">Nouvel article</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form id="stockItemForm">
+          <input type="hidden" id="stockItemId" value="">
+          
+          <div class="mb-3">
+            <label for="stockItemName" class="form-label">Nom de l'article *</label>
+            <input type="text" class="form-control" id="stockItemName" required>
+          </div>
+          
+          <div class="mb-3">
+            <label for="stockItemCategory" class="form-label">Catégorie *</label>
+            <select class="form-select" id="stockItemCategory" required>
+              <option value="">Sélectionner...</option>
+              <option value="Consommable">Consommable</option>
+              <option value="Non consommable">Non consommable</option>
+              <!-- Les autres catégories seront chargées dynamiquement -->
+            </select>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="stockItemQuantity" class="form-label">Quantité *</label>
+              <input type="number" class="form-control" id="stockItemQuantity" min="0" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="stockItemThreshold" class="form-label">Seuil d'alerte *</label>
+              <input type="number" class="form-control" id="stockItemThreshold" min="0" required>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="stockItemLocation" class="form-label">Localisation</label>
+            <input type="text" class="form-control" id="stockItemLocation" list="locationsList">
+            <datalist id="locationsList">
+              <!-- Les localisations seront chargées dynamiquement -->
+            </datalist>
+          </div>
+          
+          <div class="mb-3">
+            <label for="stockItemSupplierRef" class="form-label">Référence fournisseur</label>
+            <input type="text" class="form-control" id="stockItemSupplierRef">
+          </div>
+          
+          <div class="mb-3">
+            <label for="stockItemSupplierLink" class="form-label">Lien fournisseur</label>
+            <input type="url" class="form-control" id="stockItemSupplierLink" placeholder="https://">
+          </div>
+          
+          <div class="text-end">
+            <small class="text-muted">* Champs obligatoires</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" id="saveStockItem">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
