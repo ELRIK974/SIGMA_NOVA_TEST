@@ -50,12 +50,12 @@ function updateEmpruntStatus(id, newStatus) {
   }
 }
 
-// Supprimer un emprunt (réservé aux administrateurs)
-function deleteEmprunt(id) {
+// Mettre à jour un emprunt
+function updateEmprunt(id, empruntData) {
   try {
-    return deleteRow("Emprunts", "ID", id);
+    return updateRow("Emprunts", "ID", id, empruntData);
   } catch (error) {
-    console.error("Erreur dans deleteEmprunt:", error);
+    console.error("Erreur dans updateEmprunt:", error);
     return false;
   }
 }
