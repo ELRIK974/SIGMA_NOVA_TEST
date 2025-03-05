@@ -95,26 +95,37 @@ function getEmpruntsEnAttente() {
 
 // Fonction pour récupérer le contenu HTML d'une page spécifique
 function getPageContent(pageName) {
+  let content = '';
+  
   switch(pageName) {
     case 'dashboard':
-      return HtmlService.createHtmlOutputFromFile('dashboardUI').getContent();
+      content = HtmlService.createTemplateFromFile('dashboard').evaluate().getContent();
+      break;
     case 'emprunts':
-      return HtmlService.createHtmlOutputFromFile('empruntsUI').getContent();
+      // Créer un template qui peut inclure d'autres fichiers
+      const empruntsTemplate = HtmlService.createTemplateFromFile('emprunts');
+      content = empruntsTemplate.evaluate().getContent();
+      break;
     case 'stock':
-      return HtmlService.createHtmlOutputFromFile('stockUI').getContent();
+      content = HtmlService.createTemplateFromFile('stock').evaluate().getContent();
+      break;
     case 'modules':
-      return HtmlService.createHtmlOutputFromFile('modulesUI').getContent();
+      content = HtmlService.createTemplateFromFile('modules').evaluate().getContent();
+      break;
     case 'livraisons':
-      return HtmlService.createHtmlOutputFromFile('livraisonsUI').getContent();
+      content = HtmlService.createTemplateFromFile('livraisons').evaluate().getContent();
+      break;
     case 'options':
-      return HtmlService.createHtmlOutputFromFile('optionsUI').getContent();
+      content = HtmlService.createTemplateFromFile('options').evaluate().getContent();
+      break;
     default:
       // Par défaut, retourner la page dashboard
-      return HtmlService.createHtmlOutputFromFile('dashboardUI').getContent();
+      content = HtmlService.createTemplateFromFile('dashboard').evaluate().getContent();
   }
+  
+  return content;
 }
 
-// Obtenir les données pour la page Stock
 // Obtenir les données pour la page Stock
 function getStockPageData(page, pageSize, filterType, searchTerm) {
   try {
@@ -217,6 +228,24 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
         totalItems: 0,
         totalPages: 1
       }
+    };
+  }
+}
+// Sauvegarder un emprunt (création ou modification)
+function saveEmpruntFromUI(empruntData) {
+  try {
+    // Si l'emprunt a un ID, c'est une modification
+    if (empruntData.ID && empruntData.ID.trim() !== '') {
+      return updateEmprunt(empruntData.ID, empruntData);
+    } else {
+      // Sinon, c'est une création
+      return createEmprunt(empruntData);
+    }
+  } catch (error) {
+    console.error("Erreur dans saveEmpruntFromUI:", error);
+    return {
+      success: false,
+      message: "Erreur lors de l'enregistrement: " + error.toString()
     };
   }
 }
