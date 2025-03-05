@@ -93,34 +93,34 @@ function getEmpruntsEnAttente() {
   ];
 }
 
+
 // Fonction pour récupérer le contenu HTML d'une page spécifique
 function getPageContent(pageName) {
   let content = '';
   
   switch(pageName) {
     case 'dashboard':
-      content = HtmlService.createTemplateFromFile('dashboard').evaluate().getContent();
+      content = HtmlService.createTemplateFromFile('dashboardUI').evaluate().getContent();
       break;
     case 'emprunts':
-      // Créer un template qui peut inclure d'autres fichiers
-      const empruntsTemplate = HtmlService.createTemplateFromFile('emprunts');
-      content = empruntsTemplate.evaluate().getContent();
+      // Corriger le nom du fichier pour qu'il corresponde au fichier réel
+      content = HtmlService.createTemplateFromFile('empruntsUI').evaluate().getContent();
       break;
     case 'stock':
-      content = HtmlService.createTemplateFromFile('stock').evaluate().getContent();
+      content = HtmlService.createTemplateFromFile('stockUI').evaluate().getContent();
       break;
     case 'modules':
-      content = HtmlService.createTemplateFromFile('modules').evaluate().getContent();
+      content = HtmlService.createTemplateFromFile('modulesUI').evaluate().getContent();
       break;
     case 'livraisons':
-      content = HtmlService.createTemplateFromFile('livraisons').evaluate().getContent();
+      content = HtmlService.createTemplateFromFile('livraisonsUI').evaluate().getContent();
       break;
     case 'options':
-      content = HtmlService.createTemplateFromFile('options').evaluate().getContent();
+      content = HtmlService.createTemplateFromFile('optionsUI').evaluate().getContent();
       break;
     default:
       // Par défaut, retourner la page dashboard
-      content = HtmlService.createTemplateFromFile('dashboard').evaluate().getContent();
+      content = HtmlService.createTemplateFromFile('dashboardUI').evaluate().getContent();
   }
   
   return content;
