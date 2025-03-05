@@ -1,0 +1,179 @@
+<div id="dashboardPage">
+  <h1 class="mb-4">
+    <i class="fas fa-tachometer-alt me-2"></i>
+    Résumé
+  </h1>
+  
+  <div class="row">
+    <!-- Alertes Stock -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-warning text-dark">
+          <i class="fas fa-exclamation-triangle me-2"></i> Alertes Stock !
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="alertesStockTable">
+            <thead>
+              <tr>
+                <th>Matériel concerné</th>
+                <th>Stock actuel</th>
+                <th>Seuil d'alerte</th>
+                <th>Localisation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Matériel spécifique manquant -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <i class="fas fa-times me-2"></i> Matériel spécifique manquant
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="materielManquantTable">
+            <thead>
+              <tr>
+                <th>Matériel</th>
+                <th>Quantité</th>
+                <th>Urgence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mt-4">
+    <!-- Emprunts non revenus -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <i class="fas fa-bell me-2"></i> Emprunts non revenus
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="empruntsNonRevenusTable">
+            <thead>
+              <tr>
+                <th>Nom de la manipulation</th>
+                <th>Lieu d'utilisation</th>
+                <th>Date de départ</th>
+                <th>Date de retour prévue</th>
+                <th>Secteur</th>
+                <th>Emprunteur</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mt-4">
+    <!-- Prochains emprunts -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-info text-white">
+          <i class="fas fa-calendar me-2"></i> Prochains emprunts
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="prochainsEmpruntsTable">
+            <thead>
+              <tr>
+                <th>Nom de la demande</th>
+                <th>Date prévue du départ</th>
+                <th>État de préparation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modules non opérationnels -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-warning text-dark">
+          <i class="fas fa-tools me-2"></i> Modules non opérationnels
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="modulesNonOperationnelsTable">
+            <thead>
+              <tr>
+                <th>Code module</th>
+                <th>Nom du module</th>
+                <th>Problème</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mt-4">
+    <!-- Matériel non opérationnel -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-secondary text-white">
+          <i class="fas fa-wrench me-2"></i> Matériel non opérationnel
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="materielNonOperationnelTable">
+            <thead>
+              <tr>
+                <th>Matériel</th>
+                <th>Problème</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Emprunts en attente d'inventaire/facturation -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-clipboard-list me-2"></i> Emprunts en attente
+        </div>
+        <div class="card-body">
+          <table class="table table-striped" id="empruntsEnAttenteTable">
+            <thead>
+              <tr>
+                <th>Nom de l'emprunt</th>
+                <th>Date de retour</th>
+                <th>État</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Les données seront chargées dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
