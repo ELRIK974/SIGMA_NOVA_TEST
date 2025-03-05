@@ -1,0 +1,421 @@
+<!-- Fonctions pour la page État des Stocks -->
+<script>
+// Variables globales pour la page Stock
+window.stockCurrentPage = 1;
+window.stockPageSize = 10;
+window.stockCurrentFilter = 'Tous';
+window.stockCurrentSearch = '';
+window.stockItemToDelete = null;
+
+// Initialisation de la page Stock
+window.initializeStockPage = function() {
+  console.log('Initialisation de la page Stock - DÉBUT');
+  
+  try {
+    // Chargement initial des données
+    console.log('Appel de loadStockData()');
+    window.loadStockData();
+    
+    // Configuration des gestionnaires d'événements
+    console.log('Appel de setupStockEventHandlers()');
+    window.setupStockEventHandlers();
+    
+    console.log('Initialisation de la page Stock - FIN');
+  } catch (error) {
+    console.error('ERREUR dans initializeStockPage:', error);
+    alert('Erreur d\'initialisation: ' + error.message);
+  }
+};
+
+// Fonction pour charger les données du stock
+window.loadStockData = function() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(data) {
+      window.hideSpinner();
+      console.log('Données reçues:', data);
+      
+      if (data && data.stockData) {
+        window.fillStockTable(data.stockData.items);
+        window.updatePagination(data.stockData.pagination);
+        window.fillCategoryFilters(data.categories);
+        window.fillLocationsList(data.locations);
+      } else {
+        console.error('Format de données incorrect:', data);
+        alert('Format de données incorrect reçu du serveur');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors du chargement des données:', error);
+      window.hideSpinner();
+      alert('Erreur lors du chargement des données: ' + error);
+    })
+    .getStockPageData(window.stockCurrentPage, window.stockPageSize, window.stockCurrentFilter, window.stockCurrentSearch);
+};
+
+// Configuration des gestionnaires d'événements pour la page Stock
+window.setupStockEventHandlers = function() {
+  // Événement pour la recherche
+  const searchInput = document.getElementById('searchStock');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      window.stockCurrentSearch = this.value;
+      window.stockCurrentPage = 1; // Retourner à la première page lors d'une recherche
+      window.loadStockData();
+    });
+  }
+  
+  // Événement pour le filtre de catégorie
+  const filterDropdown = document.getElementById('stockFilterDropdown');
+  if (filterDropdown) {
+    filterDropdown.addEventListener('click', function(e) {
+      if (e.target.classList.contains('dropdown-item')) {
+        e.preventDefault();
+        
+        // Mettre à jour le filtre actif visuellement
+        document.querySelectorAll('#stockFilterDropdown .dropdown-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        e.target.classList.add('active');
+        
+        // Appliquer le filtre
+        window.stockCurrentFilter = e.target.getAttribute('data-filter');
+        window.stockCurrentPage = 1; // Retourner à la première page lors d'un filtrage
+        window.loadStockData();
+      }
+    });
+  }
+  
+  // Événement pour le bouton Nouvel article
+  const btnNew = document.getElementById('btnNouvelArticle');
+  if (btnNew) {
+    btnNew.addEventListener('click', function() {
+      window.openStockItemForm();
+    });
+  }
+  
+  // Événement pour le bouton Exporter
+  const btnExport = document.getElementById('btnExportStock');
+  if (btnExport) {
+    btnExport.addEventListener('click', function() {
+      window.exportStockToCSV();
+    });
+  }
+  
+  // Événement pour le bouton Enregistrer dans le formulaire
+  const btnSave = document.getElementById('saveStockItem');
+  if (btnSave) {
+    btnSave.addEventListener('click', function() {
+      window.saveStockItemForm();
+    });
+  }
+  
+  // Événement pour le bouton Confirmer la suppression
+  const btnConfirmDelete = document.getElementById('confirmDelete');
+  if (btnConfirmDelete) {
+    btnConfirmDelete.addEventListener('click', function() {
+      if (window.stockItemToDelete) {
+        window.deleteStockItem(window.stockItemToDelete);
+      }
+    });
+  }
+};
+
+// Remplir le tableau avec les articles
+window.fillStockTable = function(items) {
+  const tbody = document.querySelector('#stockTable tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (!items || items.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td colspan="6" class="text-center">Aucun article trouvé</td>`;
+    tbody.appendChild(row);
+    return;
+  }
+  
+  items.forEach(item => {
+    const row = document.createElement('tr');
+    
+    // Ajouter une classe si le stock est critique
+    if (Number(item.Quantité) <= Number(item["Seuil alerte"])) {
+      row.classList.add('table-warning');
+    }
+    
+    row.innerHTML = `
+      <td>${item.Nom || ''}</td>
+      <td>${item.Catégorie || ''}</td>
+      <td>${item.Quantité || 0}</td>
+      <td>${item["Seuil alerte"] || 0}</td>
+      <td>${item.Localisation || ''}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1 btn-edit" data-id="${item.ID}">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${item.ID}">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  // Ajouter les gestionnaires d'événements pour les boutons d'action
+  document.querySelectorAll('#stockTable .btn-edit').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const itemId = this.getAttribute('data-id');
+      window.editStockItem(itemId);
+    });
+  });
+  
+  document.querySelectorAll('#stockTable .btn-delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const itemId = this.getAttribute('data-id');
+      window.confirmDeleteItem(itemId);
+    });
+  });
+};
+
+// Mettre à jour la pagination
+window.updatePagination = function(pagination) {
+  const paginationEl = document.getElementById('stockPagination');
+  if (!paginationEl) return;
+  
+  paginationEl.innerHTML = '';
+  
+  if (!pagination) return;
+  
+  // Bouton Précédent
+  const prevItem = document.createElement('li');
+  prevItem.className = `page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`;
+  prevItem.innerHTML = `<a class="page-link" href="#" data-page="${pagination.currentPage - 1}">Précédent</a>`;
+  paginationEl.appendChild(prevItem);
+  
+  // Pages numérotées
+  for (let i = 1; i <= pagination.totalPages; i++) {
+    const pageItem = document.createElement('li');
+    pageItem.className = `page-item ${i === pagination.currentPage ? 'active' : ''}`;
+    pageItem.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+    paginationEl.appendChild(pageItem);
+  }
+  
+  // Bouton Suivant
+  const nextItem = document.createElement('li');
+  nextItem.className = `page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`;
+  nextItem.innerHTML = `<a class="page-link" href="#" data-page="${pagination.currentPage + 1}">Suivant</a>`;
+  paginationEl.appendChild(nextItem);
+  
+  // Ajouter les gestionnaires d'événements pour les liens de pagination
+  document.querySelectorAll('#stockPagination .page-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      if (!this.parentElement.classList.contains('disabled')) {
+        window.stockCurrentPage = parseInt(this.getAttribute('data-page'));
+        window.loadStockData();
+      }
+    });
+  });
+};
+
+// Remplir les filtres de catégorie
+window.fillCategoryFilters = function(categories) {
+  const dropdown = document.getElementById('stockFilterDropdown');
+  if (!dropdown) return;
+  
+  // Conserver les items par défaut (Tous, Consommables, Non consommables, Stock critique)
+  const defaultItems = Array.from(dropdown.querySelectorAll('li')).slice(0, 4);
+  
+  // Vider le dropdown
+  dropdown.innerHTML = '';
+  
+  // Restaurer les items par défaut
+  defaultItems.forEach(item => {
+    dropdown.appendChild(item);
+  });
+  
+  // Ajouter les catégories personnalisées
+  if (categories && categories.length > 0) {
+    categories.forEach(category => {
+      if (category !== 'Consommable' && category !== 'Non consommable') {
+        const item = document.createElement('li');
+        item.innerHTML = `<a class="dropdown-item" href="#" data-filter="${category}">${category}</a>`;
+        dropdown.appendChild(item);
+      }
+    });
+  }
+};
+
+// Remplir la liste des localisations pour l'autocomplétion
+window.fillLocationsList = function(locations) {
+  const datalist = document.getElementById('locationsList');
+  if (!datalist) return;
+  
+  datalist.innerHTML = '';
+  
+  if (locations && locations.length > 0) {
+    locations.forEach(location => {
+      const option = document.createElement('option');
+      option.value = location;
+      datalist.appendChild(option);
+    });
+  }
+};
+
+// Ouvrir le formulaire d'article (pour création ou édition)
+window.openStockItemForm = function(itemData = null) {
+  // Réinitialiser le formulaire
+  const form = document.getElementById('stockItemForm');
+  if (!form) return;
+  
+  form.reset();
+  document.getElementById('stockItemId').value = '';
+  
+  if (itemData) {
+    // Mode édition
+    document.getElementById('stockItemModalLabel').textContent = 'Modifier un article';
+    document.getElementById('stockItemId').value = itemData.ID;
+    document.getElementById('stockItemName').value = itemData.Nom || '';
+    document.getElementById('stockItemCategory').value = itemData.Catégorie || '';
+    document.getElementById('stockItemQuantity').value = itemData.Quantité || 0;
+    document.getElementById('stockItemThreshold').value = itemData["Seuil alerte"] || 0;
+    document.getElementById('stockItemLocation').value = itemData.Localisation || '';
+    document.getElementById('stockItemSupplierRef').value = itemData["Référence fournisseur"] || '';
+    document.getElementById('stockItemSupplierLink').value = itemData["Lien fournisseur"] || '';
+  } else {
+    // Mode création
+    document.getElementById('stockItemModalLabel').textContent = 'Nouvel article';
+  }
+  
+  // Afficher le modal
+  const modal = new bootstrap.Modal(document.getElementById('stockItemModal'));
+  modal.show();
+};
+
+// Éditer un article existant
+window.editStockItem = function(itemId) {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(itemData) {
+      window.hideSpinner();
+      if (itemData) {
+        window.openStockItemForm(itemData);
+      } else {
+        alert('Article non trouvé');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de la récupération des données de l\'article:', error);
+      window.hideSpinner();
+      alert('Erreur lors de la récupération des données de l\'article');
+    })
+    .getStockItemForEdit(itemId);
+};
+
+// Sauvegarder les données du formulaire
+window.saveStockItemForm = function() {
+  // Valider le formulaire
+  const form = document.getElementById('stockItemForm');
+  if (!form) return;
+  
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+  
+  // Récupérer les données du formulaire
+  const itemData = {
+    ID: document.getElementById('stockItemId').value,
+    Nom: document.getElementById('stockItemName').value,
+    Catégorie: document.getElementById('stockItemCategory').value,
+    Quantité: document.getElementById('stockItemQuantity').value,
+    "Seuil alerte": document.getElementById('stockItemThreshold').value,
+    Localisation: document.getElementById('stockItemLocation').value,
+    "Référence fournisseur": document.getElementById('stockItemSupplierRef').value,
+    "Lien fournisseur": document.getElementById('stockItemSupplierLink').value
+  };
+  
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      window.hideSpinner();
+      
+      // Fermer le modal
+      bootstrap.Modal.getInstance(document.getElementById('stockItemModal')).hide();
+      
+      // Recharger les données
+      window.loadStockData();
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de l\'enregistrement de l\'article:', error);
+      window.hideSpinner();
+      alert('Erreur lors de l\'enregistrement de l\'article');
+    })
+    .saveStockItem(itemData);
+};
+
+// Confirmer la suppression d'un article
+window.confirmDeleteItem = function(itemId) {
+  window.stockItemToDelete = itemId;
+  const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+  modal.show();
+};
+
+// Supprimer un article
+window.deleteStockItem = function(itemId) {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      window.hideSpinner();
+      
+      // Fermer le modal de confirmation
+      bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+      
+      // Réinitialiser l'ID de l'article à supprimer
+      window.stockItemToDelete = null;
+      
+      // Recharger les données
+      window.loadStockData();
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de la suppression de l\'article:', error);
+      window.hideSpinner();
+      alert('Erreur lors de la suppression de l\'article');
+    })
+    .deleteStockItemFromUI(itemId);
+};
+
+// Exporter les données du stock au format CSV
+window.exportStockToCSV = function() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(csvContent) {
+      window.hideSpinner();
+      
+      // Création d'un élément <a> temporaire pour le téléchargement
+      const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', 'SIGMA_Stock_Export_' + new Date().toISOString().split('T')[0] + '.csv');
+      document.body.appendChild(link);
+      
+      // Cliquer automatiquement sur le lien pour démarrer le téléchargement
+      link.click();
+      
+      // Supprimer l'élément
+      document.body.removeChild(link);
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de l\'exportation des données:', error);
+      window.hideSpinner();
+      alert('Erreur lors de l\'exportation des données');
+    })
+    .getStockCSVExport();
+};
+</script>
