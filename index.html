@@ -1,0 +1,571 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA - Gestion du Matériel</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome pour les icônes -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f8f9fa;
+        color: #343a40;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        background-color: #343a40;
+        color: white;
+        height: 100%;
+        min-height: calc(100vh - 56px);
+      }
+      
+      .sidebar .nav-link {
+        color: rgba(255, 255, 255, 0.75);
+        transition: all 0.2s;
+      }
+      
+      .sidebar .nav-link:hover, .sidebar .nav-link.active {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      .sidebar .nav-link i {
+        margin-right: 10px;
+      }
+      
+      .content {
+        flex: 1;
+        padding: 20px;
+      }
+      
+      .card {
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      
+      .card-header {
+        font-weight: bold;
+        background-color: #f1f3f5;
+      }
+      
+      table {
+        width: 100%;
+      }
+      
+      .alert-warning {
+        background-color: #fff3cd;
+        border-color: #ffecb5;
+      }
+      
+      .alert-danger {
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+      }
+      
+      .spinner-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      
+      .spinner-container {
+        background: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Barre de navigation supérieure -->
+    <?!= include('header'); ?>
+    
+    <div class="container-fluid">
+      <div class="row">
+        <!-- Barre latérale -->
+        <div class="col-md-3 col-lg-2 sidebar py-3">
+          <?!= include('sidebar'); ?>
+        </div>
+        
+        <!-- Contenu principal -->
+        <div class="col-md-9 col-lg-10 content" id="mainContent">
+          <!-- Le contenu sera chargé dynamiquement ici -->
+          <?!= include('dashboardUI'); ?>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Pied de page -->
+    <?!= include('footer'); ?>
+    
+    <!-- Élément pour afficher un loader lors des chargements -->
+    <div id="spinnerOverlay" class="spinner-overlay" style="display: none;">
+      <div class="spinner-container text-center">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Chargement...</span>
+        </div>
+        <div class="mt-2">Chargement en cours...</div>
+      </div>
+    </div>
+    
+    <!-- Bootstrap 5 JS Bundle avec Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+  // Variables globales
+  // Variables globales
+let currentPage = 'dashboard';
+let scriptUrl = '';
+let userEmail = '';
+
+// Variables pour la page Stock (doivent correspondre aux noms dans stockUI.html)
+let stockCurrentPage = 1;
+let stockPageSize = 10;
+let stockCurrentFilter = 'Tous';
+let stockCurrentSearch = '';
+
+// Au chargement du document
+document.addEventListener('DOMContentLoaded', function() {
+  initializeApp();
+});
+
+// Initialisation de l'application
+function initializeApp() {
+  // Obtenir l'URL de déploiement et l'email de l'utilisateur
+  google.script.run
+    .withSuccessHandler(function(url) {
+      scriptUrl = url;
+    })
+    .withFailureHandler(handleError)
+    .getScriptURL();
+    
+  google.script.run
+    .withSuccessHandler(function(email) {
+      userEmail = email;
+      document.getElementById('userEmail').textContent = email;
+    })
+    .withFailureHandler(handleError)
+    .getUserEmail();
+  
+  // Initialiser la page - vérifier si un fragment d'URL existe
+  const hashPage = window.location.hash.substring(1);
+  if (hashPage) {
+    navigateTo(hashPage);
+  } else {
+    loadDashboardData(); // Charger la page d'accueil par défaut
+  }
+  
+  // Ajouter des gestionnaires d'événements pour les liens de navigation
+  setupNavigation();
+}
+
+// Gestionnaire d'erreur global
+function handleError(error) {
+  console.error('Erreur:', error);
+  hideSpinner();
+  showErrorMessage('Une erreur est survenue. Veuillez réessayer ou contacter l\'administrateur.');
+}
+  
+  // Fonction pour charger les données du tableau de bord
+  function loadDashboardData() {
+    showSpinner();
+    
+    google.script.run
+      .withSuccessHandler(function(data) {
+        // Remplir les tableaux avec les données
+        fillAlertesStock(data.alertesStock);
+        fillMaterielManquant(data.materielManquant);
+        fillEmpruntsNonRevenus(data.empruntsNonRevenus);
+        fillProchainsEmprunts(data.prochainsEmprunts);
+        fillModulesNonOperationnels(data.modulesNonOperationnels);
+        fillMaterielNonOperationnel(data.materielNonOperationnel);
+        fillEmpruntsEnAttente(data.empruntsEnAttente);
+        
+        hideSpinner();
+      })
+      .withFailureHandler(function(error) {
+        console.error('Erreur lors du chargement des données:', error);
+        hideSpinner();
+        showErrorMessage('Erreur lors du chargement des données');
+      })
+      .getDashboardData();
+  }
+  
+  // Fonctions pour remplir les tableaux du tableau de bord
+  function fillAlertesStock(data) {
+    const tbody = document.querySelector('#alertesStockTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="4" class="text-center">Aucune alerte de stock</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.materiel}</td>
+        <td>${item.stock}</td>
+        <td>${item.seuil}</td>
+        <td>${item.localisation}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  function fillMaterielManquant(data) {
+    const tbody = document.querySelector('#materielManquantTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="3" class="text-center">Aucun matériel manquant</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.materiel}</td>
+        <td>${item.quantite}</td>
+        <td>${item.urgence}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  function fillEmpruntsNonRevenus(data) {
+    const tbody = document.querySelector('#empruntsNonRevenusTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="6" class="text-center">Aucun emprunt en cours</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.nom}</td>
+        <td>${item.lieu}</td>
+        <td>${item.dateDepart}</td>
+        <td>${item.dateRetour}</td>
+        <td>${item.secteur}</td>
+        <td>${item.emprunteur}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  function fillProchainsEmprunts(data) {
+    const tbody = document.querySelector('#prochainsEmpruntsTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="3" class="text-center">Aucun emprunt à venir</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.nom}</td>
+        <td>${item.dateDepart}</td>
+        <td>${item.etat}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  function fillModulesNonOperationnels(data) {
+    const tbody = document.querySelector('#modulesNonOperationnelsTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="3" class="text-center">Aucun module non opérationnel</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.code}</td>
+        <td>${item.nom}</td>
+        <td>${item.probleme}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  function fillMaterielNonOperationnel(data) {
+    const tbody = document.querySelector('#materielNonOperationnelTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="3" class="text-center">Aucun matériel non opérationnel</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.nom}</td>
+        <td>${item.probleme}</td>
+        <td>${item.statut}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  function fillEmpruntsEnAttente(data) {
+    const tbody = document.querySelector('#empruntsEnAttenteTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="3" class="text-center">Aucun emprunt en attente</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${item.nom}</td>
+        <td>${item.dateRetour}</td>
+        <td>${item.statut}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+  
+  // Fonction pour configurer la navigation
+  function setupNavigation() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = this.getAttribute('data-target');
+        navigateTo(target);
+      });
+    });
+  }
+  
+  // Fonction pour naviguer vers une page
+ // 
+function navigateTo(page) {
+  currentPage = page;
+  window.location.hash = page;
+  updateActiveNavLink(page);
+  showSpinner();
+
+  google.script.run
+    .withSuccessHandler(function(html) {
+      const mainContent = document.getElementById('mainContent');
+      mainContent.innerHTML = html;
+
+      // Initialiser notre objet global pour mémoriser les pages déjà chargées
+      window.loadedPages = window.loadedPages || {};
+
+      // Si la page n'a pas encore été chargée (scripts non injectés), injecter les scripts
+      if (!window.loadedPages[page]) {
+        const dynamicScripts = mainContent.querySelectorAll('script');
+        dynamicScripts.forEach(oldScript => {
+          const newScript = document.createElement('script');
+          newScript.setAttribute('data-dynamic', 'true');
+          if (oldScript.src) {
+            newScript.src = oldScript.src;
+          } else {
+            newScript.textContent = oldScript.textContent;
+          }
+          document.body.appendChild(newScript);
+        });
+        // Marquer cette page comme chargée
+        window.loadedPages[page] = true;
+      }
+
+      // Après un court délai pour s'assurer que les scripts ont été exécutés
+      setTimeout(() => {
+        initializePage(page);
+        hideSpinner();
+      }, 100);
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors du chargement de la page:', error);
+      hideSpinner();
+      showErrorMessage('Erreur lors du chargement de la page: ' + error);
+    })
+    .getPageContent(page);
+}
+
+
+
+  // Mettre à jour le lien actif dans la navigation
+  function updateActiveNavLink(page) {
+    // Supprimer la classe active de tous les liens
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.classList.remove('active');
+    });
+    
+    // Ajouter la classe active au lien correspondant à la page actuelle
+    const activeLink = document.querySelector(`.nav-link[data-target="${page}"]`);
+    if (activeLink) {
+      activeLink.classList.add('active');
+    }
+  }
+  
+  // Initialiser la page selon son type
+  function initializePage(page) {
+    switch(page) {
+      case 'dashboard':
+        loadDashboardData();
+        break;
+      case 'emprunts':
+        initializeEmpruntsPage();
+        break;
+      case 'stock':
+        initializeStockPage();
+        break;
+      case 'modules':
+        initializeModulesPage();
+        break;
+      case 'livraisons':
+        initializeLivraisonsPage();
+        break;
+      case 'options':
+        // Pas besoin d'initialisation spéciale pour l'instant
+        break;
+    }
+  }
+  
+  // Fonctions d'initialisation pour chaque page (à développer plus tard)
+  function initializeEmpruntsPage() {
+    // Pour l'instant, simplement afficher un message dans la console
+    console.log('Initialisation de la page Emprunts');
+    // Cette fonction sera développée ultérieurement
+  }
+  
+  // Initialisation de la page Stock
+function initializeStockPage() {
+  console.log('Initialisation de la page Stock');
+  
+  try {
+    // Vérifier si la page est correctement chargée
+    if (!document.getElementById('stockPage')) {
+      console.error('La page Stock n\'est pas encore chargée correctement');
+      setTimeout(initializeStockPage, 100); // Réessayer après un court délai
+      return;
+    }
+    
+    // Ajouter le gestionnaire d'événements pour le bouton de test
+    const testButton = document.getElementById('btnTestConnection');
+    if (testButton) {
+      testButton.addEventListener('click', testStockConnection);
+    }
+    
+    // Cette fonction doit être définie dans stockUI.html
+    if (typeof loadStockData === 'function') {
+      loadStockData();
+    } else {
+      console.error('La fonction loadStockData n\'est pas définie');
+    }
+    
+    // Cette fonction doit être définie dans stockUI.html
+    if (typeof setupStockEventHandlers === 'function') {
+      setupStockEventHandlers();
+    } else {
+      console.error('La fonction setupStockEventHandlers n\'est pas définie');
+    }
+  } catch (error) {
+    console.error('ERREUR dans initializeStockPage:', error);
+  }
+}
+  
+  function initializeModulesPage() {
+    console.log('Initialisation de la page Modules');
+    // Cette fonction sera développée ultérieurement
+  }
+  
+  function initializeLivraisonsPage() {
+    console.log('Initialisation de la page Livraisons');
+    // Cette fonction sera développée ultérieurement
+  }
+  
+  // Fonctions utilitaires pour l'interface
+  function showSpinner() {
+    document.getElementById('spinnerOverlay').style.display = 'flex';
+  }
+  
+  function hideSpinner() {
+    document.getElementById('spinnerOverlay').style.display = 'none';
+  }
+  
+  function showErrorMessage(message) {
+    alert(message);
+  }
+  // Fonction d'urgence pour tester la connexion à la base de données
+// Fonction d'urgence pour tester la connexion à la base de données
+function testStockConnectionEmergency() {
+  console.log("Test d'urgence de connexion...");
+  
+  // Afficher un message pendant le test
+  const tempAlert = document.createElement('div');
+  tempAlert.style.position = 'fixed';
+  tempAlert.style.top = '50%';
+  tempAlert.style.left = '50%';
+  tempAlert.style.transform = 'translate(-50%, -50%)';
+  tempAlert.style.backgroundColor = 'rgba(0,0,0,0.8)';
+  tempAlert.style.color = 'white';
+  tempAlert.style.padding = '20px';
+  tempAlert.style.borderRadius = '5px';
+  tempAlert.style.zIndex = '9999';
+  tempAlert.textContent = "Test d'urgence en cours...";
+  document.body.appendChild(tempAlert);
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.body.removeChild(tempAlert);
+      console.log("Test d'urgence réussi :", result);
+      alert("Connexion OK! Nombre d'articles: " + (result ? result.length : 0));
+    })
+    .withFailureHandler(function(error) {
+      document.body.removeChild(tempAlert);
+      console.error("Test d'urgence échoué :", error);
+      alert("Erreur de connexion: " + error);
+    })
+    .testGetAllStock(); // Utiliser la fonction de test dédiée
+}
+</script>
+<?!= include('stockUIFunctions'); ?>
+<?!= include('empruntsUIFunctions'); ?>
+  </body>
+</html>
