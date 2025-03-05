@@ -6,24 +6,7 @@
 // Obtenir tous les emprunts
 function getAllEmprunts() {
   try {
-    // Vérifier que la feuille existe
-    const sheet = getSheetByName("Emprunts");
-    if (!sheet) {
-      console.error("La feuille 'Emprunts' n'existe pas");
-      return [];
-    }
-    
-    // Vérifier qu'il y a des données (au-delà de la ligne d'en-tête)
-    if (sheet.getLastRow() <= 1) {
-      console.log("La feuille 'Emprunts' ne contient que l'en-tête");
-      return [];
-    }
-    
-    // Obtenir toutes les données
-    const data = getAllData("Emprunts");
-    
-    // S'assurer qu'un tableau est retourné même si getAllData échoue
-    return Array.isArray(data) ? data : [];
+    return getAllData("Emprunts");
   } catch (error) {
     console.error("Erreur dans getAllEmprunts:", error);
     return [];
