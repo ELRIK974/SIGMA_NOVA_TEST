@@ -170,68 +170,32 @@ function getStockCSVExport() {
 // Obtenir les données pour la page Emprunts
 function getEmpruntsPageData(page, pageSize, filterType) {
   try {
-    // Vérification de l'existence de la feuille Emprunts
-    const sheet = getSheetByName("Emprunts");
-    if (!sheet) {
-      console.error("La feuille 'Emprunts' n'existe pas");
-      // On retourne un objet vide mais valide
-      return {
-        emprunts: [],
-        pagination: {
-          currentPage: 1,
-          pageSize: pageSize || 10,
-          totalItems: 0,
-          totalPages: 1
-        },
-        message: "La feuille 'Emprunts' n'existe pas"
-      };
-    }
-    
-    // Vérifier qu'il y a des données dans la feuille
-    if (sheet.getLastRow() <= 1) {
-      console.log("La feuille 'Emprunts' ne contient pas de données");
-      return {
-        emprunts: [],
-        pagination: {
-          currentPage: 1,
-          pageSize: pageSize || 10,
-          totalItems: 0,
-          totalPages: 1
-        },
-        message: "Aucun emprunt trouvé. Veuillez en créer un nouveau."
-      };
-    }
-    
     // Récupérer tous les emprunts
     const allEmprunts = getAllEmprunts();
     
-    // Garantir que allEmprunts est un tableau même si getAllEmprunts() retourne null ou undefined
-    const safeEmprunts = Array.isArray(allEmprunts) ? allEmprunts : [];
-    
     // Filtrer les emprunts si un type de filtre est spécifié
-    let filteredEmprunts = safeEmprunts;
+    let filteredEmprunts = allEmprunts;
     if (filterType && filterType !== 'Tous') {
-      filteredEmprunts = safeEmprunts.filter(emp => emp.Statut === filterType);
+      filteredEmprunts = allEmprunts.filter(emp => emp.Statut === filterType);
     }
     
     // Calculer la pagination
     const totalEmprunts = filteredEmprunts.length;
-    const totalPages = Math.ceil(totalEmprunts / (pageSize || 10)) || 1; // Au moins 1 page
-    const validPage = Math.max(1, Math.min(page || 1, totalPages));
-    const startIndex = (validPage - 1) * (pageSize || 10);
+    const totalPages = Math.ceil(totalEmprunts / pageSize) || 1; // Au moins 1 page
+    const validPage = Math.max(1, Math.min(page, totalPages));
+    const startIndex = (validPage - 1) * pageSize;
     
     // Extraire les emprunts pour la page demandée
-    const paginatedEmprunts = filteredEmprunts.slice(startIndex, startIndex + (pageSize || 10));
+    const paginatedEmprunts = filteredEmprunts.slice(startIndex, startIndex + pageSize);
     
     return {
       emprunts: paginatedEmprunts,
       pagination: {
         currentPage: validPage,
-        pageSize: pageSize || 10,
+        pageSize: pageSize,
         totalItems: totalEmprunts,
         totalPages: totalPages
-      },
-      message: paginatedEmprunts.length > 0 ? "Données chargées avec succès" : "Aucun emprunt trouvé"
+      }
     };
   } catch (error) {
     console.error("Erreur dans getEmpruntsPageData:", error);
@@ -239,11 +203,10 @@ function getEmpruntsPageData(page, pageSize, filterType) {
       emprunts: [],
       pagination: {
         currentPage: 1,
-        pageSize: pageSize || 10,
+        pageSize: pageSize,
         totalItems: 0,
         totalPages: 1
-      },
-      message: "Erreur lors de la récupération des emprunts: " + error.toString()
+      }
     };
   }
 }
