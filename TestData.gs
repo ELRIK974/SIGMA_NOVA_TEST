@@ -91,3 +91,36 @@ function addTestEmprunts() {
     return "Erreur: " + error.toString();
   }
 }
+// Fonction pour tester la connexion à la feuille Emprunts
+function testEmpruntsConnection() {
+  try {
+    const sheet = getSheetByName("Emprunts");
+    
+    if (!sheet) {
+      const spreadsheet = getSpreadsheet();
+      const newSheet = spreadsheet.insertSheet("Emprunts");
+      newSheet.appendRow(["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création"]);
+      
+      return {
+        success: true,
+        message: "Feuille Emprunts créée avec succès",
+        sheetName: "Emprunts"
+      };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    
+    return {
+      success: true,
+      message: "Connexion à la feuille Emprunts réussie",
+      rowCount: data.length,
+      headers: data[0]
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: "Erreur lors du test de la feuille Emprunts: " + error.toString(),
+      error: error.toString()
+    };
+  }
+}
