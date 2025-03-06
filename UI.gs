@@ -257,17 +257,3 @@ function saveEmpruntFromUI(empruntData) {
     return null;
   }
 }
-
-// Obtenir un emprunt par son ID pour l'édition
-function getEmpruntById(id) {
-  return getEmpruntById(id);
-}
-// Mettre à jour le statut d'un emprunt depuis l'UI
-function updateEmpruntStatus(id, newStatus) {
-  try {
-    return updateEmpruntStatus(id, newStatus);
-  } catch (error) {
-    console.error("Erreur dans updateEmpruntStatus (UI):", error);
-    return false;
-  }
-}
