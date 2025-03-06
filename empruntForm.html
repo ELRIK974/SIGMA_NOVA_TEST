@@ -1,0 +1,99 @@
+<div class="modal fade" id="empruntModal" tabindex="-1" aria-labelledby="empruntModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="empruntModalLabel">Nouvel emprunt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form id="empruntForm">
+          <input type="hidden" id="empruntId" value="">
+          
+          <!-- Informations générales -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <i class="fas fa-info-circle me-2"></i> Informations générales
+            </div>
+            <div class="card-body">
+              <div class="row mb-3">
+                <div class="col-md-8">
+                  <label for="empruntNom" class="form-label">Nom de la manipulation *</label>
+                  <input type="text" class="form-control" id="empruntNom" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="empruntSecteur" class="form-label">Secteur *</label>
+                  <select class="form-select" id="empruntSecteur" required>
+                    <option value="">Sélectionner...</option>
+                    <option value="Astronomie">Astronomie</option>
+                    <option value="Environnement">Environnement</option>
+                    <option value="Robotique">Robotique</option>
+                    <option value="Chimie">Chimie</option>
+                    <option value="Physique">Physique</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="empruntLieu" class="form-label">Lieu de la manipulation *</label>
+                <input type="text" class="form-control" id="empruntLieu" required>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Dates -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <i class="fas fa-calendar-alt me-2"></i> Dates
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="empruntDateDepart" class="form-label">Date de départ *</label>
+                  <input type="date" class="form-control" id="empruntDateDepart" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="empruntDateRetour" class="form-label">Date de retour prévue *</label>
+                  <input type="date" class="form-control" id="empruntDateRetour" required>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Responsables -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <i class="fas fa-user me-2"></i> Responsables
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="empruntReferent" class="form-label">Référent (responsable technique) *</label>
+                  <input type="text" class="form-control" id="empruntReferent" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="empruntEmprunteur" class="form-label">Emprunteur (demandeur) *</label>
+                  <input type="text" class="form-control" id="empruntEmprunteur" required>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Notes -->
+          <div class="mb-3">
+            <label for="empruntNotes" class="form-label">Notes ou commentaires</label>
+            <textarea class="form-control" id="empruntNotes" rows="3"></textarea>
+          </div>
+          
+          <div class="text-end">
+            <small class="text-muted">* Champs obligatoires</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" id="saveEmprunt">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
