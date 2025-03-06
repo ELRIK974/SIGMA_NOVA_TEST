@@ -14,6 +14,22 @@
           </button>
         </div>
         <div class="card-body">
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control" placeholder="Rechercher un emprunt..." id="searchEmprunts">
+              <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Filtrer par statut</button>
+              <ul class="dropdown-menu dropdown-menu-end" id="statusFilterDropdown">
+                <li><a class="dropdown-item active" href="#" data-filter="Tous">Tous</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Pas prêt">Pas prêt</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Prêt">Prêt</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Parti">Parti</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Revenu">Revenu</a></li>
+                <li><a class="dropdown-item" href="#" data-filter="Inventorié">Inventorié</a></li>
+              </ul>
+            </div>
+          </div>
+          
           <div class="table-responsive">
             <table class="table table-striped table-hover" id="empruntsTable">
               <thead>
@@ -35,10 +51,11 @@
             </table>
           </div>
           
-          <div class="alert alert-info mt-3">
-            <i class="fas fa-info-circle me-2"></i>
-            Vous pouvez maintenant ajouter un nouvel emprunt en cliquant sur le bouton "Nouvel emprunt".
-          </div>
+          <nav aria-label="Pagination des emprunts">
+            <ul class="pagination justify-content-center" id="empruntsPagination">
+              <!-- Sera rempli dynamiquement -->
+            </ul>
+          </nav>
         </div>
       </div>
     </div>
@@ -49,58 +66,96 @@
 </div>
 
 <script>
+  // Variables globales pour la page Emprunts
+  let currentPage = 1;
+  let pageSize = 10;
+  let currentFilter = 'Tous';
+  let currentSearch = '';
+  
   // Fonction d'initialisation de la page Emprunts
   function initializeEmpruntsPage() {
-    console.log('Initialisation de la page Emprunts - Étape 2');
+    console.log('Initialisation de la page Emprunts - Étape 3');
     
-    // Afficher des données fictives pour tester l'affichage
-    showFakeEmpruntsData();
+    // Chargement initial des données
+    loadEmpruntsData();
     
-    // Configurer le bouton "Nouvel emprunt"
+    // Configuration des gestionnaires d'événements
+    setupEmpruntsEventHandlers();
+  }
+  
+  // Fonction pour charger les données des emprunts
+  function loadEmpruntsData() {
+    showSpinner();
+    
+    google.script.run
+      .withSuccessHandler(function(data) {
+        hideSpinner();
+        
+        // Remplir le tableau avec les emprunts
+        fillEmpruntsTable(data.emprunts);
+        
+        // Mettre à jour la pagination
+        updateEmpruntsPagination(data.pagination);
+      })
+      .withFailureHandler(function(error) {
+        console.error('Erreur lors du chargement des emprunts:', error);
+        hideSpinner();
+        showErrorMessage('Erreur lors du chargement des emprunts: ' + error);
+      })
+      .getEmpruntsPageData(currentPage, pageSize, currentFilter, currentSearch);
+  }
+  
+  // Configuration des gestionnaires d'événements pour la page Emprunts
+  function setupEmpruntsEventHandlers() {
+    // Événement pour la recherche
+    document.getElementById('searchEmprunts').addEventListener('input', function() {
+      currentSearch = this.value;
+      currentPage = 1; // Retourner à la première page lors d'une recherche
+      loadEmpruntsData();
+    });
+    
+    // Événement pour le filtre de statut
+    document.getElementById('statusFilterDropdown').addEventListener('click', function(e) {
+      if (e.target.classList.contains('dropdown-item')) {
+        e.preventDefault();
+        
+        // Mettre à jour le filtre actif visuellement
+        document.querySelectorAll('#statusFilterDropdown .dropdown-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        e.target.classList.add('active');
+        
+        // Appliquer le filtre
+        currentFilter = e.target.getAttribute('data-filter');
+        currentPage = 1; // Retourner à la première page lors d'un filtrage
+        loadEmpruntsData();
+      }
+    });
+    
+    // Événement pour le bouton Nouvel emprunt
     document.getElementById('btnNouvelEmprunt').addEventListener('click', function() {
       openEmpruntForm();
     });
     
-    // Configurer le bouton "Enregistrer" du formulaire
+    // Événement pour le bouton Enregistrer dans le formulaire
     document.getElementById('saveEmprunt').addEventListener('click', function() {
       saveEmpruntForm();
     });
   }
   
-  // Fonction pour afficher des données d'emprunt fictives à des fins de test
-  function showFakeEmpruntsData() {
-    const fakeEmprunts = [
-      {
-        ID: "EMP-001",
-        "Nom Manipulation": "Animation Astronomie",
-        "Date départ": "01/03/2025",
-        "Date retour": "15/03/2025",
-        Statut: "Pas prêt",
-        Emprunteur: "Marie Dupont"
-      },
-      {
-        ID: "EMP-002",
-        "Nom Manipulation": "Atelier Robotique",
-        "Date départ": "10/03/2025",
-        "Date retour": "20/03/2025",
-        Statut: "Prêt",
-        Emprunteur: "Jean Martin"
-      },
-      {
-        ID: "EMP-003",
-        "Nom Manipulation": "Exposition Science",
-        "Date départ": "15/02/2025",
-        "Date retour": "01/03/2025",
-        Statut: "Parti",
-        Emprunteur: "Sophie Bernard"
-      }
-    ];
-    
-    // Remplir le tableau avec les données fictives
+  // Remplir le tableau avec les emprunts
+  function fillEmpruntsTable(emprunts) {
     const tbody = document.querySelector('#empruntsTable tbody');
     tbody.innerHTML = '';
     
-    fakeEmprunts.forEach(emprunt => {
+    if (!emprunts || emprunts.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="6" class="text-center">Aucun emprunt trouvé</td>`;
+      tbody.appendChild(row);
+      return;
+    }
+    
+    emprunts.forEach(emprunt => {
       const row = document.createElement('tr');
       
       // Ajouter une classe selon le statut
@@ -108,24 +163,79 @@
         row.classList.add('table-warning');
       } else if (emprunt.Statut === "Parti") {
         row.classList.add('table-info');
+      } else if (emprunt.Statut === "Revenu") {
+        row.classList.add('table-success');
       }
       
       row.innerHTML = `
         <td>${emprunt.ID}</td>
-        <td>${emprunt["Nom Manipulation"]}</td>
-        <td>${emprunt["Date départ"]} - ${emprunt["Date retour"]}</td>
-        <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut}</span></td>
-        <td>${emprunt.Emprunteur}</td>
+        <td>${emprunt["Nom Manipulation"] || ''}</td>
+        <td>${emprunt["Date départ"] || ''} - ${emprunt["Date retour"] || ''}</td>
+        <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ''}</span></td>
+        <td>${emprunt.Emprunteur || ''}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary me-1">
+          <button class="btn btn-sm btn-outline-primary me-1 btn-view" data-id="${emprunt.ID}">
             <i class="fas fa-eye"></i>
           </button>
-          <button class="btn btn-sm btn-outline-secondary">
+          <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${emprunt.ID}">
             <i class="fas fa-edit"></i>
           </button>
         </td>
       `;
       tbody.appendChild(row);
+    });
+    
+    // Ajouter les gestionnaires d'événements pour les boutons d'action
+    document.querySelectorAll('#empruntsTable .btn-edit').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const empruntId = this.getAttribute('data-id');
+        editEmprunt(empruntId);
+      });
+    });
+    
+    document.querySelectorAll('#empruntsTable .btn-view').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const empruntId = this.getAttribute('data-id');
+        viewEmprunt(empruntId);
+      });
+    });
+  }
+  
+  // Mettre à jour la pagination
+  function updateEmpruntsPagination(pagination) {
+    const paginationEl = document.getElementById('empruntsPagination');
+    paginationEl.innerHTML = '';
+    
+    // Bouton Précédent
+    const prevItem = document.createElement('li');
+    prevItem.className = `page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`;
+    prevItem.innerHTML = `<a class="page-link" href="#" data-page="${pagination.currentPage - 1}">Précédent</a>`;
+    paginationEl.appendChild(prevItem);
+    
+    // Pages numérotées
+    for (let i = 1; i <= pagination.totalPages; i++) {
+      const pageItem = document.createElement('li');
+      pageItem.className = `page-item ${i === pagination.currentPage ? 'active' : ''}`;
+      pageItem.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+      paginationEl.appendChild(pageItem);
+    }
+    
+    // Bouton Suivant
+    const nextItem = document.createElement('li');
+    nextItem.className = `page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`;
+    nextItem.innerHTML = `<a class="page-link" href="#" data-page="${pagination.currentPage + 1}">Suivant</a>`;
+    paginationEl.appendChild(nextItem);
+    
+    // Ajouter les gestionnaires d'événements pour les liens de pagination
+    document.querySelectorAll('#empruntsPagination .page-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        if (!this.parentElement.classList.contains('disabled')) {
+          currentPage = parseInt(this.getAttribute('data-page'));
+          loadEmpruntsData();
+        }
+      });
     });
   }
   
@@ -159,8 +269,28 @@
     document.getElementById('empruntDateRetour').value = returnDateFormatted;
     
     if (empruntData) {
-      // Mode édition (sera développé plus tard)
+      // Mode édition - préremplir le formulaire avec les données existantes
       document.getElementById('empruntModalLabel').textContent = 'Modifier un emprunt';
+      document.getElementById('empruntId').value = empruntData.ID;
+      document.getElementById('empruntNom').value = empruntData["Nom Manipulation"] || '';
+      document.getElementById('empruntLieu').value = empruntData.Lieu || '';
+      
+      // Conversion des dates du format JJ/MM/AAAA au format YYYY-MM-DD
+      if (empruntData["Date départ"] && empruntData["Date départ"].includes('/')) {
+        const parts = empruntData["Date départ"].split('/');
+        document.getElementById('empruntDateDepart').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      
+      if (empruntData["Date retour"] && empruntData["Date retour"].includes('/')) {
+        const parts = empruntData["Date retour"].split('/');
+        document.getElementById('empruntDateRetour').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      
+      document.getElementById('empruntSecteur').value = empruntData.Secteur || '';
+      document.getElementById('empruntReferent').value = empruntData.Référent || '';
+      document.getElementById('empruntEmprunteur').value = empruntData.Emprunteur || '';
+      document.getElementById('empruntNotes').value = empruntData.Notes || '';
+      
     } else {
       // Mode création
       document.getElementById('empruntModalLabel').textContent = 'Nouvel emprunt';
@@ -169,6 +299,33 @@
     // Afficher le modal
     const modal = new bootstrap.Modal(document.getElementById('empruntModal'));
     modal.show();
+  }
+  
+  // Éditer un emprunt existant
+  function editEmprunt(empruntId) {
+    showSpinner();
+    
+    google.script.run
+      .withSuccessHandler(function(empruntData) {
+        hideSpinner();
+        if (empruntData) {
+          openEmpruntForm(empruntData);
+        } else {
+          showErrorMessage('Emprunt non trouvé');
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Erreur lors de la récupération des données de l\'emprunt:', error);
+        hideSpinner();
+        showErrorMessage('Erreur lors de la récupération des données de l\'emprunt: ' + error);
+      })
+      .getEmpruntById(empruntId);
+  }
+  
+  // Visualiser un emprunt (pour l'instant, juste un message)
+  function viewEmprunt(empruntId) {
+    // Pour l'instant, on affiche juste un message
+    alert(`Visualisation de l'emprunt ${empruntId} - Fonctionnalité à venir`);
   }
   
   // Sauvegarder les données du formulaire d'emprunt
@@ -199,7 +356,6 @@
     // Envoyer les données au serveur
     google.script.run
       .withSuccessHandler(function(result) {
-        // Masquer le spinner
         hideSpinner();
         
         if (result) {
@@ -209,9 +365,8 @@
           // Afficher un message de succès
           alert('Emprunt enregistré avec succès !');
           
-          // Ajouter le nouvel emprunt à la liste (pour la démonstration)
-          // Dans une version future, nous rechargerons toute la liste
-          addNewEmpruntToTable(result);
+          // Recharger la liste d'emprunts
+          loadEmpruntsData();
         } else {
           alert('Erreur lors de l\'enregistrement de l\'emprunt.');
         }
@@ -222,41 +377,5 @@
         alert('Erreur lors de l\'enregistrement de l\'emprunt: ' + error);
       })
       .saveEmpruntFromUI(empruntData);
-  }
-  
-  // Ajouter un nouvel emprunt au tableau
-  function addNewEmpruntToTable(emprunt) {
-    const tbody = document.querySelector('#empruntsTable tbody');
-    
-    // Si c'est le message "Aucun emprunt trouvé", le supprimer
-    if (tbody.innerHTML.includes('Aucun emprunt trouvé')) {
-      tbody.innerHTML = '';
-    }
-    
-    const row = document.createElement('tr');
-    
-    // Ajouter une classe selon le statut
-    if (emprunt.Statut === "Pas prêt") {
-      row.classList.add('table-warning');
-    }
-    
-    row.innerHTML = `
-      <td>${emprunt.ID}</td>
-      <td>${emprunt["Nom Manipulation"]}</td>
-      <td>${emprunt["Date départ"]} - ${emprunt["Date retour"]}</td>
-      <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut}</span></td>
-      <td>${emprunt.Emprunteur}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary me-1">
-          <i class="fas fa-eye"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-secondary">
-          <i class="fas fa-edit"></i>
-        </button>
-      </td>
-    `;
-    
-    // Ajouter la ligne au début du tableau
-    tbody.insertBefore(row, tbody.firstChild);
   }
 </script>
