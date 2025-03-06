@@ -8,39 +8,45 @@ window.empruntsCurrentSearch = '';
 
 // Initialisation de la page Emprunts
 window.initializeEmpruntsPage = function() {
-  console.log('Initialisation de la page Emprunts - Étape 3 - Données réelles');
+  console.log('Initialisation de la page Emprunts - DÉBUT');
   
-  // Chargement des données réelles
-  window.loadEmpruntsData();
-  
-  // Configuration des gestionnaires d'événements
-  window.setupEmpruntsEventHandlers();
+  try {
+    // Chargement initial des données
+    console.log('Appel de loadEmpruntsData()');
+    window.loadEmpruntsData();
+    
+    // Configuration des gestionnaires d'événements
+    console.log('Appel de setupEmpruntsEventHandlers()');
+    window.setupEmpruntsEventHandlers();
+    
+    console.log('Initialisation de la page Emprunts - FIN');
+  } catch (error) {
+    console.error('ERREUR dans initializeEmpruntsPage:', error);
+    alert('Erreur d\'initialisation: ' + error.message);
+  }
 };
 
-// Chargement des données des emprunts
+// Fonction pour charger les données des emprunts
 window.loadEmpruntsData = function() {
   window.showSpinner();
   
   google.script.run
     .withSuccessHandler(function(data) {
       window.hideSpinner();
+      console.log('Données reçues:', data);
       
       if (data && data.emprunts) {
-        // Remplir le tableau avec les emprunts
         window.fillEmpruntsTable(data.emprunts);
-        
-        // Mettre à jour la pagination
         window.updateEmpruntsPagination(data.pagination);
       } else {
         console.error('Format de données incorrect:', data);
-        window.fillEmpruntsTable([]);
+        alert('Format de données incorrect reçu du serveur');
       }
     })
     .withFailureHandler(function(error) {
-      console.error('Erreur lors du chargement des emprunts:', error);
+      console.error('Erreur lors du chargement des données:', error);
       window.hideSpinner();
-      window.showErrorMessage('Erreur lors du chargement des emprunts: ' + error);
-      window.fillEmpruntsTable([]);
+      alert('Erreur lors du chargement des données: ' + error);
     })
     .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
 };
@@ -121,18 +127,22 @@ window.fillEmpruntsTable = function(emprunts) {
       row.classList.add('table-success');
     }
     
+    // Formater les dates pour l'affichage
+    let dateDepart = emprunt["Date départ"] || '';
+    let dateRetour = emprunt["Date retour"] || '';
+    
     row.innerHTML = `
       <td>${emprunt.ID || ''}</td>
       <td>${emprunt["Nom Manipulation"] || ''}</td>
-      <td>${emprunt["Date départ"] || ''} - ${emprunt["Date retour"] || ''}</td>
+      <td>${dateDepart} - ${dateRetour}</td>
       <td><span class="badge ${window.getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ''}</span></td>
       <td>${emprunt.Emprunteur || ''}</td>
       <td>
-        <button class="btn btn-sm btn-outline-primary me-1 btn-edit-emprunt" data-id="${emprunt.ID}">
-          <i class="fas fa-edit"></i>
+        <button class="btn btn-sm btn-outline-primary me-1 btn-view-emprunt" data-id="${emprunt.ID}">
+          <i class="fas fa-eye"></i>
         </button>
-        <button class="btn btn-sm btn-outline-secondary btn-status-emprunt" data-id="${emprunt.ID}" data-status="${emprunt.Statut}">
-          <i class="fas fa-arrow-right"></i>
+        <button class="btn btn-sm btn-outline-secondary btn-edit-emprunt" data-id="${emprunt.ID}">
+          <i class="fas fa-edit"></i>
         </button>
       </td>
     `;
@@ -140,18 +150,17 @@ window.fillEmpruntsTable = function(emprunts) {
   });
   
   // Ajouter les gestionnaires d'événements pour les boutons d'action
-  document.querySelectorAll('#empruntsTable .btn-edit-emprunt').forEach(btn => {
+  document.querySelectorAll('#empruntsTable .btn-view-emprunt').forEach(btn => {
     btn.addEventListener('click', function() {
-      const itemId = this.getAttribute('data-id');
-      window.editEmprunt(itemId);
+      const empruntId = this.getAttribute('data-id');
+      window.viewEmpruntDetails(empruntId);
     });
   });
   
-  document.querySelectorAll('#empruntsTable .btn-status-emprunt').forEach(btn => {
+  document.querySelectorAll('#empruntsTable .btn-edit-emprunt').forEach(btn => {
     btn.addEventListener('click', function() {
-      const itemId = this.getAttribute('data-id');
-      const currentStatus = this.getAttribute('data-status');
-      window.updateEmpruntStatus(itemId, currentStatus);
+      const empruntId = this.getAttribute('data-id');
+      window.editEmprunt(empruntId);
     });
   });
 };
@@ -210,10 +219,38 @@ window.getBadgeClass = function(status) {
   }
 };
 
+// Fonctions pour visualiser et éditer un emprunt
+window.viewEmpruntDetails = function(empruntId) {
+  alert(`Détails de l'emprunt ${empruntId} - Fonctionnalité à implémenter`);
+};
+
+window.editEmprunt = function(empruntId) {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(empruntData) {
+      window.hideSpinner();
+      if (empruntData) {
+        window.openEmpruntForm(empruntData);
+      } else {
+        alert('Emprunt non trouvé');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de la récupération des données de l\'emprunt:', error);
+      window.hideSpinner();
+      alert('Erreur lors de la récupération des données de l\'emprunt');
+    })
+    .getEmpruntByIdFromUI(empruntId);
+};
+
 // Ouvrir le formulaire d'emprunt (pour création ou édition)
 window.openEmpruntForm = function(empruntData = null) {
   // Réinitialiser le formulaire
-  document.getElementById('empruntForm').reset();
+  const form = document.getElementById('empruntForm');
+  if (!form) return;
+  
+  form.reset();
   document.getElementById('empruntId').value = '';
   
   // Définir la date d'aujourd'hui comme date par défaut pour le départ
@@ -235,18 +272,24 @@ window.openEmpruntForm = function(empruntData = null) {
     document.getElementById('empruntLieu').value = empruntData.Lieu || '';
     
     // Convertir les dates au format YYYY-MM-DD si nécessaire
-    if (empruntData["Date départ"] && empruntData["Date départ"].includes('/')) {
-      const parts = empruntData["Date départ"].split('/');
-      document.getElementById('empruntDateDepart').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    } else {
-      document.getElementById('empruntDateDepart').value = empruntData["Date départ"] || todayFormatted;
+    if (empruntData["Date départ"]) {
+      // Si la date est au format JJ/MM/AAAA, la convertir
+      if (empruntData["Date départ"].includes('/')) {
+        const parts = empruntData["Date départ"].split('/');
+        document.getElementById('empruntDateDepart').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      } else {
+        document.getElementById('empruntDateDepart').value = empruntData["Date départ"];
+      }
     }
     
-    if (empruntData["Date retour"] && empruntData["Date retour"].includes('/')) {
-      const parts = empruntData["Date retour"].split('/');
-      document.getElementById('empruntDateRetour').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    } else {
-      document.getElementById('empruntDateRetour').value = empruntData["Date retour"] || returnDateFormatted;
+    if (empruntData["Date retour"]) {
+      // Si la date est au format JJ/MM/AAAA, la convertir
+      if (empruntData["Date retour"].includes('/')) {
+        const parts = empruntData["Date retour"].split('/');
+        document.getElementById('empruntDateRetour').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      } else {
+        document.getElementById('empruntDateRetour').value = empruntData["Date retour"];
+      }
     }
     
     document.getElementById('empruntSecteur').value = empruntData.Secteur || '';
@@ -263,77 +306,7 @@ window.openEmpruntForm = function(empruntData = null) {
   modal.show();
 };
 
-// Éditer un emprunt existant
-window.editEmprunt = function(itemId) {
-  window.showSpinner();
-  
-  google.script.run
-    .withSuccessHandler(function(empruntData) {
-      window.hideSpinner();
-      if (empruntData) {
-        window.openEmpruntForm(empruntData);
-      } else {
-        window.showErrorMessage('Emprunt non trouvé');
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.error('Erreur lors de la récupération des données de l\'emprunt:', error);
-      window.hideSpinner();
-      window.showErrorMessage('Erreur lors de la récupération des données de l\'emprunt');
-    })
-    .getEmpruntById(itemId);
-};
-
-// Mettre à jour le statut d'un emprunt
-window.updateEmpruntStatus = function(itemId, currentStatus) {
-  let newStatus = '';
-  
-  // Déterminer le prochain statut
-  switch (currentStatus) {
-    case 'Pas prêt':
-      newStatus = 'Prêt';
-      break;
-    case 'Prêt':
-      newStatus = 'Parti';
-      break;
-    case 'Parti':
-      newStatus = 'Revenu';
-      break;
-    case 'Revenu':
-      newStatus = 'Inventorié';
-      break;
-    default:
-      window.showErrorMessage('Statut actuel non reconnu');
-      return;
-  }
-  
-  // Demander confirmation à l'utilisateur
-  if (!confirm(`Voulez-vous changer le statut de cet emprunt de "${currentStatus}" à "${newStatus}" ?`)) {
-    return;
-  }
-  
-  window.showSpinner();
-  
-  google.script.run
-    .withSuccessHandler(function(result) {
-      window.hideSpinner();
-      
-      if (result) {
-        // Recharger les données
-        window.loadEmpruntsData();
-      } else {
-        window.showErrorMessage('Erreur lors de la mise à jour du statut');
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-      window.hideSpinner();
-      window.showErrorMessage('Erreur lors de la mise à jour du statut: ' + error);
-    })
-    .updateEmpruntStatus(itemId, newStatus);
-};
-
-// Sauvegarder les données du formulaire d'emprunt
+// Sauvegarder les données du formulaire
 window.saveEmpruntForm = function() {
   // Valider le formulaire
   const form = document.getElementById('empruntForm');
@@ -365,16 +338,19 @@ window.saveEmpruntForm = function() {
         // Fermer le modal
         bootstrap.Modal.getInstance(document.getElementById('empruntModal')).hide();
         
+        // Afficher un message de succès
+        alert('Emprunt enregistré avec succès !');
+        
         // Recharger les données
         window.loadEmpruntsData();
       } else {
-        window.showErrorMessage('Erreur lors de l\'enregistrement de l\'emprunt');
+        alert('Erreur lors de l\'enregistrement de l\'emprunt.');
       }
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors de l\'enregistrement de l\'emprunt:', error);
       window.hideSpinner();
-      window.showErrorMessage('Erreur lors de l\'enregistrement de l\'emprunt: ' + error);
+      alert('Erreur lors de l\'enregistrement de l\'emprunt: ' + error);
     })
     .saveEmpruntFromUI(empruntData);
 };
