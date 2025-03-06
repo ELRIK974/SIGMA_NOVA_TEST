@@ -231,21 +231,38 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     };
   }
 }
-// Sauvegarder un emprunt (création ou modification)
+/// Sauvegarder un emprunt (nouveau ou existant)
 function saveEmpruntFromUI(empruntData) {
   try {
-    // Si l'emprunt a un ID, c'est une modification
-    if (empruntData.ID && empruntData.ID.trim() !== '') {
+    // Formater les dates si elles sont au format YYYY-MM-DD (format HTML input date)
+    if (empruntData["Date départ"] && empruntData["Date départ"].includes('-')) {
+      const parts = empruntData["Date départ"].split('-');
+      empruntData["Date départ"] = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    
+    if (empruntData["Date retour"] && empruntData["Date retour"].includes('-')) {
+      const parts = empruntData["Date retour"].split('-');
+      empruntData["Date retour"] = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    
+    if (empruntData.ID) {
+      // Mise à jour d'un emprunt existant
       return updateEmprunt(empruntData.ID, empruntData);
     } else {
-      // Sinon, c'est une création
+      // Création d'un nouvel emprunt
       return createEmprunt(empruntData);
     }
   } catch (error) {
     console.error("Erreur dans saveEmpruntFromUI:", error);
-    return {
-      success: false,
-      message: "Erreur lors de l'enregistrement: " + error.toString()
-    };
+    return null;
+  }
+}
+// Obtenir un emprunt par son ID
+function getEmpruntById(id) {
+  try {
+    return Emprunts.getEmpruntById(id);
+  } catch (error) {
+    console.error("Erreur dans getEmpruntById (UI):", error);
+    return null;
   }
 }
