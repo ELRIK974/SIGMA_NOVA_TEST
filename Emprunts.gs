@@ -59,3 +59,28 @@ function updateEmprunt(id, empruntData) {
     return false;
   }
 }
+// Supprimer un emprunt
+function deleteEmprunt(id) {
+  try {
+    return deleteRow("Emprunts", "ID", id);
+  } catch (error) {
+    console.error("Erreur dans deleteEmprunt:", error);
+    return false;
+  }
+}
+
+// Convertir une date du format YYYY-MM-DD au format JJ/MM/AAAA
+function formatDateForDisplay(date) {
+  if (!date) return '';
+  
+  // Si la date est déjà au format JJ/MM/AAAA, la retourner telle quelle
+  if (date.includes('/')) return date;
+  
+  // Sinon, convertir du format YYYY-MM-DD au format JJ/MM/AAAA
+  const parts = date.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  
+  return date;
+}
