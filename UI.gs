@@ -180,48 +180,10 @@ function getStockCSVExport() {
 }
 
 // Obtenir les données pour la page Emprunts avec pagination
-// Obtenir les données pour la page Emprunts avec pagination
 function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
   try {
-    // Vérifier d'abord si la feuille existe
-    const sheet = getSheetByName("Emprunts");
-    if (!sheet) {
-      // Si la feuille n'existe pas, la créer avec les en-têtes
-      const spreadsheet = getSpreadsheet();
-      const newSheet = spreadsheet.insertSheet("Emprunts");
-      newSheet.appendRow(["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création"]);
-      
-      // Retourner un résultat vide mais valide
-      return {
-        emprunts: [],
-        pagination: {
-          currentPage: 1,
-          pageSize: pageSize || 10,
-          totalItems: 0,
-          totalPages: 1
-        },
-        info: "Feuille Emprunts créée automatiquement"
-      };
-    }
-    
     // Récupérer tous les emprunts
     const emprunts = getAllEmprunts();
-    
-    // Vérifier si emprunts est null ou undefined
-    if (!emprunts) {
-      console.error("getAllEmprunts() a retourné null ou undefined");
-      return {
-        emprunts: [],
-        pagination: {
-          currentPage: 1,
-          pageSize: pageSize || 10,
-          totalItems: 0,
-          totalPages: 1
-        },
-        error: "Aucun emprunt récupéré"
-      };
-    }
-    
     let filteredEmprunts = emprunts;
     
     // Appliquer le filtre par statut si spécifié
@@ -241,17 +203,16 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     // Calculer le nombre total de pages
     const totalItems = filteredEmprunts.length;
     const totalPages = Math.ceil(totalItems / pageSize) || 1; // Au moins 1 page même si vide
-    const validPage = Math.max(1, Math.min(page, totalPages)); // S'assurer que la page est valide
     
     // Extraction pour la pagination
-    const startIndex = (validPage - 1) * pageSize;
+    const startIndex = (page - 1) * pageSize;
     const paginatedItems = filteredEmprunts.slice(startIndex, startIndex + pageSize);
     
     // Retourner les données et les informations de pagination
     return {
       emprunts: paginatedItems,
       pagination: {
-        currentPage: validPage,
+        currentPage: page,
         pageSize: pageSize,
         totalItems: totalItems,
         totalPages: totalPages
@@ -259,7 +220,6 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     };
   } catch (error) {
     console.error("Erreur dans getEmpruntsPageData:", error);
-    // Retourner une structure valide même en cas d'erreur
     return {
       emprunts: [],
       pagination: {
@@ -267,8 +227,7 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
         pageSize: pageSize || 10,
         totalItems: 0,
         totalPages: 1
-      },
-      error: error.toString()
+      }
     };
   }
 }
@@ -298,13 +257,7 @@ function saveEmpruntFromUI(empruntData) {
     return null;
   }
 }
-// Mettre à jour le statut d'un emprunt depuis l'interface
-function updateEmpruntStatusFromUI(id, newStatus) {
-  try {
-    const result = updateEmpruntStatus(id, newStatus);
-    return result;
-  } catch (error) {
-    console.error("Erreur dans updateEmpruntStatusFromUI:", error);
-    return false;
-  }
+// Obtenir un emprunt par son ID pour l'interface utilisateur
+function getEmpruntByIdFromUI(id) {
+  return getEmpruntById(id);
 }
