@@ -27,6 +27,7 @@ window.initializeEmpruntsPage = function() {
 };
 
 // Fonction pour charger les données des emprunts
+// Fonction pour charger les données des emprunts
 window.loadEmpruntsData = function() {
   window.showSpinner();
   
@@ -35,18 +36,42 @@ window.loadEmpruntsData = function() {
       window.hideSpinner();
       console.log('Données reçues:', data);
       
-      if (data && data.emprunts) {
+      if (data && Array.isArray(data.emprunts)) {
         window.fillEmpruntsTable(data.emprunts);
         window.updateEmpruntsPagination(data.pagination);
+        
+        // Afficher un message si présent
+        if (data.message) {
+          console.info("Message du serveur:", data.message);
+        }
       } else {
         console.error('Format de données incorrect:', data);
-        alert('Format de données incorrect reçu du serveur');
+        
+        // Récupérer le message d'erreur si disponible
+        const errorMsg = data && data.error ? data.error : 'Format de données incorrect reçu du serveur';
+        
+        // Afficher un message d'erreur plus informatif
+        alert('Erreur: ' + errorMsg + '\n\nVérifiez la console pour plus de détails et exécutez testEmpruntsConnection() puis addTestEmprunts() dans l\'éditeur de script.');
+        
+        // Remplir le tableau avec un message d'erreur
+        const tbody = document.querySelector('#empruntsTable tbody');
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center">Erreur: ${errorMsg}</td></tr>`;
+        }
       }
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement des données:', error);
       window.hideSpinner();
-      alert('Erreur lors du chargement des données: ' + error);
+      
+      // Afficher un message d'erreur plus informatif
+      alert('Erreur lors du chargement des données: ' + error + '\n\nVérifiez la console pour plus de détails.');
+      
+      // Remplir le tableau avec un message d'erreur
+      const tbody = document.querySelector('#empruntsTable tbody');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center">Erreur lors du chargement des données: ${error}</td></tr>`;
+      }
     })
     .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
 };
