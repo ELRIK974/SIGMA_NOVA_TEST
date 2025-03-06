@@ -180,10 +180,47 @@ function getStockCSVExport() {
 }
 
 // Obtenir les données pour la page Emprunts avec pagination
+// Obtenir les données pour la page Emprunts avec pagination
 function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
   try {
+    // Vérifier si la feuille existe
+    const sheet = getSheetByName("Emprunts");
+    if (!sheet) {
+      // Créer la feuille si elle n'existe pas
+      const spreadsheet = getSpreadsheet();
+      const newSheet = spreadsheet.insertSheet("Emprunts");
+      newSheet.appendRow(["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"]);
+      
+      // Retourner une structure vide mais valide
+      return {
+        emprunts: [],
+        pagination: {
+          currentPage: 1,
+          pageSize: pageSize || 10,
+          totalItems: 0,
+          totalPages: 1
+        },
+        message: "Feuille Emprunts créée. Ajoutez des données avec testEmpruntsConnection()"
+      };
+    }
+    
     // Récupérer tous les emprunts
     const emprunts = getAllEmprunts();
+    
+    // Vérifier si emprunts est un tableau valide
+    if (!Array.isArray(emprunts)) {
+      return {
+        emprunts: [],
+        pagination: {
+          currentPage: 1,
+          pageSize: pageSize || 10,
+          totalItems: 0,
+          totalPages: 1
+        },
+        error: "La fonction getAllEmprunts() ne retourne pas un tableau valide"
+      };
+    }
+    
     let filteredEmprunts = emprunts;
     
     // Appliquer le filtre par statut si spécifié
@@ -200,19 +237,26 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
       );
     }
     
+    // Valider les paramètres de pagination
+    page = parseInt(page) || 1;
+    pageSize = parseInt(pageSize) || 10;
+    
     // Calculer le nombre total de pages
     const totalItems = filteredEmprunts.length;
     const totalPages = Math.ceil(totalItems / pageSize) || 1; // Au moins 1 page même si vide
     
+    // S'assurer que la page demandée est valide
+    const validPage = Math.max(1, Math.min(page, totalPages));
+    
     // Extraction pour la pagination
-    const startIndex = (page - 1) * pageSize;
+    const startIndex = (validPage - 1) * pageSize;
     const paginatedItems = filteredEmprunts.slice(startIndex, startIndex + pageSize);
     
     // Retourner les données et les informations de pagination
     return {
       emprunts: paginatedItems,
       pagination: {
-        currentPage: page,
+        currentPage: validPage,
         pageSize: pageSize,
         totalItems: totalItems,
         totalPages: totalPages
@@ -220,6 +264,7 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     };
   } catch (error) {
     console.error("Erreur dans getEmpruntsPageData:", error);
+    // Même en cas d'erreur, retourner une structure valide
     return {
       emprunts: [],
       pagination: {
@@ -227,7 +272,8 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
         pageSize: pageSize || 10,
         totalItems: 0,
         totalPages: 1
-      }
+      },
+      error: error.toString()
     };
   }
 }
@@ -260,4 +306,42 @@ function saveEmpruntFromUI(empruntData) {
 // Obtenir un emprunt par son ID pour l'interface utilisateur
 function getEmpruntByIdFromUI(id) {
   return getEmpruntById(id);
+}
+
+// Fonction de test pour diagnostiquer les problèmes avec les emprunts
+function debugEmpruntsData() {
+  try {
+    // Vérifier si la feuille existe
+    const sheet = getSheetByName("Emprunts");
+    if (!sheet) {
+      return {
+        success: false,
+        message: "La feuille 'Emprunts' n'existe pas",
+        solution: "Exécutez la fonction testEmpruntsConnection() pour créer la feuille"
+      };
+    }
+    
+    // Vérifier s'il y a des données
+    const emprunts = getAllEmprunts();
+    
+    return {
+      success: true,
+      message: `${emprunts.length} emprunts trouvés`,
+      emprunts: emprunts,
+      sample: emprunts.length > 0 ? emprunts[0] : null,
+      // Tester la pagination
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        totalItems: emprunts.length,
+        totalPages: Math.ceil(emprunts.length / 10) || 1
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: "Erreur lors du debug: " + error.toString(),
+      error: error.toString()
+    };
+  }
 }
