@@ -7,10 +7,28 @@ window.empruntsCurrentFilter = 'Tous';
 window.empruntsCurrentSearch = '';
 
 // Initialisation de la page Emprunts
+// Compteur pour limiter les tentatives de réinitialisation
+let empruntsInitAttempts = 0;
+
 window.initializeEmpruntsPage = function() {
   console.log('Initialisation de la page Emprunts - DÉBUT');
+  empruntsInitAttempts++;
+  
+  // Limite de sécurité pour éviter les boucles infinies
+  if (empruntsInitAttempts > 3) {
+    console.error('Trop de tentatives d\'initialisation de la page Emprunts');
+    showErrorMessage('Erreur d\'initialisation. Veuillez rafraîchir la page.');
+    return;
+  }
   
   try {
+    // Vérifier si la page est correctement chargée
+    const empruntsPage = document.getElementById('empruntsPage');
+    if (!empruntsPage) {
+      console.error('Le conteneur #empruntsPage n\'est pas disponible');
+      return; // Sortir sans rappel
+    }
+    
     // Chargement initial des données
     console.log('Appel de loadEmpruntsData()');
     window.loadEmpruntsData();
@@ -22,7 +40,7 @@ window.initializeEmpruntsPage = function() {
     console.log('Initialisation de la page Emprunts - FIN');
   } catch (error) {
     console.error('ERREUR dans initializeEmpruntsPage:', error);
-    alert('Erreur d\'initialisation: ' + error.message);
+    showErrorMessage('Erreur d\'initialisation: ' + error.message);
   }
 };
 
@@ -40,13 +58,43 @@ window.loadEmpruntsData = function() {
         window.updateEmpruntsPagination(data.pagination);
       } else {
         console.error('Format de données incorrect:', data);
-        alert('Format de données incorrect reçu du serveur');
+        // Utiliser la notification au lieu d'une alerte
+        showErrorMessage('Format de données incorrect reçu du serveur. Essayez de réinitialiser l\'application.');
+        
+        // Ajouter un bouton de réinitialisation
+        const mainContent = document.querySelector('#empruntsPage');
+        if (mainContent) {
+          const resetButton = document.createElement('button');
+          resetButton.className = 'btn btn-warning mt-3';
+          resetButton.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Initialiser les données';
+          resetButton.onclick = function() {
+            window.showSpinner();
+            google.script.run
+              .withSuccessHandler(function(result) {
+                window.hideSpinner();
+                if (result.success) {
+                  showSuccessMessage("Initialisation réussie. Rechargement des données...");
+                  setTimeout(window.loadEmpruntsData, 1000);
+                } else {
+                  showErrorMessage("Échec de l'initialisation: " + result.message);
+                }
+              })
+              .withFailureHandler(function(error) {
+                window.hideSpinner();
+                showErrorMessage("Erreur lors de l'initialisation: " + error);
+              })
+              .initializeApplication();
+          };
+          
+          // Ajouter au début du contenu
+          mainContent.insertBefore(resetButton, mainContent.firstChild);
+        }
       }
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement des données:', error);
       window.hideSpinner();
-      alert('Erreur lors du chargement des données: ' + error);
+      showErrorMessage('Erreur lors du chargement des données: ' + error);
     })
     .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
 };
@@ -62,7 +110,81 @@ window.setupEmpruntsEventHandlers = function() {
       window.loadEmpruntsData();
     });
   }
-  
+  // Ajouter le gestionnaire pour le bouton de diagnostic
+ const btnDiagnostic = document.getElementById('btnDiagnostic');
+  if (btnDiagnostic) {
+    btnDiagnostic.addEventListener('click', function() {
+      window.showSpinner();
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          window.hideSpinner();
+          console.log("Diagnostic du système:", result);
+          
+          // Afficher les résultats dans un modal
+          const modal = document.createElement('div');
+          modal.className = 'modal fade';
+          modal.id = 'diagnosticModal';
+          modal.setAttribute('tabindex', '-1');
+          modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Diagnostic du système</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                  <pre style="max-height: 400px; overflow: auto;">${JSON.stringify(result, null, 2)}</pre>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-primary" id="btnFixSystem">
+                    <i class="fas fa-wrench me-1"></i> Réparer le système
+                  </button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          const modalInstance = new bootstrap.Modal(modal);
+          modalInstance.show();
+          
+          // Ajouter le gestionnaire d'événements pour le bouton de réparation
+          modal.querySelector('#btnFixSystem').addEventListener('click', function() {
+            window.showSpinner();
+            modalInstance.hide();
+            
+            google.script.run
+              .withSuccessHandler(function(fixResult) {
+                window.hideSpinner();
+                if (fixResult && fixResult.success) {
+                  showSuccessMessage("Système réparé avec succès. Rechargement des données...");
+                  setTimeout(window.loadEmpruntsData, 1000);
+                } else {
+                  showErrorMessage("Échec de la réparation: " + (fixResult ? fixResult.message : "Erreur inconnue"));
+                }
+              })
+              .withFailureHandler(function(error) {
+                window.hideSpinner();
+                showErrorMessage("Erreur lors de la réparation: " + error);
+              })
+              .initializeApplication();
+          });
+          
+          // Supprimer le modal du DOM après sa fermeture
+          modal.addEventListener('hidden.bs.modal', function() {
+            document.body.removeChild(modal);
+          });
+        })
+        .withFailureHandler(function(error) {
+          window.hideSpinner();
+          showErrorMessage("Erreur lors du diagnostic: " + error);
+        })
+        .checkSystemStatus();
+    });
+  }
+};
   // Événement pour le filtre de statut
   const filterDropdown = document.getElementById('empruntFilterDropdown');
   if (filterDropdown) {
