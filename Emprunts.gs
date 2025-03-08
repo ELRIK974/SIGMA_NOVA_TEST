@@ -10,30 +10,28 @@ function getAllEmprunts() {
     const headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", 
                     "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"];
     
-    let sheet;
-    try {
-      sheet = getSheetByName("Emprunts");
-      if (!sheet) {
-        // Créer la feuille si elle n'existe pas
-        const spreadsheet = getSpreadsheet();
-        sheet = spreadsheet.insertSheet("Emprunts");
-        sheet.appendRow(headers);
-      }
-    } catch (e) {
-      console.error("Erreur lors de l'accès/création de la feuille Emprunts:", e);
-      return []; // Retourner un tableau vide plutôt que null
+    // Force la création de la feuille si elle n'existe pas
+    const sheet = ensureSheetExists("Emprunts", headers);
+    
+    // Vérifier s'il y a des données
+    const data = sheet.getDataRange().getValues();
+    
+    // Si la feuille est vide ou contient uniquement les en-têtes
+    if (data.length <= 1) {
+      console.log("La feuille Emprunts est vide, ajout de données de test...");
+      addTestEmprunts();
+      // Recharger les données après avoir ajouté les données de test
+      return getAllData("Emprunts") || [];
     }
     
-    // Récupérer les données de manière sécurisée
-    try {
-      return getAllData("Emprunts") || [];
-    } catch (dataError) {
-      console.error("Erreur lors de la récupération des données:", dataError);
-      return []; // Toujours retourner un tableau vide en cas d'erreur
-    }
+    // Récupération normale des données
+    const emprunts = getAllData("Emprunts");
+    console.log(`Récupération de ${emprunts.length} emprunts`);
+    return emprunts || [];
   } catch (error) {
-    console.error("Erreur générale dans getAllEmprunts:", error);
-    return []; // Garantir qu'on retourne toujours un tableau
+    console.error("Erreur critique dans getAllEmprunts:", error);
+    // Toujours retourner un tableau, même en cas d'erreur
+    return [];
   }
 }
 // Créer un nouvel emprunt
