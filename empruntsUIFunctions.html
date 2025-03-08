@@ -27,7 +27,6 @@ window.initializeEmpruntsPage = function() {
 };
 
 // Fonction pour charger les données des emprunts
-// Fonction pour charger les données des emprunts
 window.loadEmpruntsData = function() {
   window.showSpinner();
   
@@ -36,42 +35,18 @@ window.loadEmpruntsData = function() {
       window.hideSpinner();
       console.log('Données reçues:', data);
       
-      if (data && Array.isArray(data.emprunts)) {
+      if (data && data.emprunts) {
         window.fillEmpruntsTable(data.emprunts);
         window.updateEmpruntsPagination(data.pagination);
-        
-        // Afficher un message si présent
-        if (data.message) {
-          console.info("Message du serveur:", data.message);
-        }
       } else {
         console.error('Format de données incorrect:', data);
-        
-        // Récupérer le message d'erreur si disponible
-        const errorMsg = data && data.error ? data.error : 'Format de données incorrect reçu du serveur';
-        
-        // Afficher un message d'erreur plus informatif
-        alert('Erreur: ' + errorMsg + '\n\nVérifiez la console pour plus de détails et exécutez testEmpruntsConnection() puis addTestEmprunts() dans l\'éditeur de script.');
-        
-        // Remplir le tableau avec un message d'erreur
-        const tbody = document.querySelector('#empruntsTable tbody');
-        if (tbody) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center">Erreur: ${errorMsg}</td></tr>`;
-        }
+        alert('Format de données incorrect reçu du serveur');
       }
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement des données:', error);
       window.hideSpinner();
-      
-      // Afficher un message d'erreur plus informatif
-      alert('Erreur lors du chargement des données: ' + error + '\n\nVérifiez la console pour plus de détails.');
-      
-      // Remplir le tableau avec un message d'erreur
-      const tbody = document.querySelector('#empruntsTable tbody');
-      if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center">Erreur lors du chargement des données: ${error}</td></tr>`;
-      }
+      alert('Erreur lors du chargement des données: ' + error);
     })
     .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
 };
@@ -79,7 +54,7 @@ window.loadEmpruntsData = function() {
 // Configuration des gestionnaires d'événements pour la page Emprunts
 window.setupEmpruntsEventHandlers = function() {
   // Événement pour la recherche
-  const searchInput = document.getElementById('searchEmprunts');
+  const searchInput = document.getElementById('searchEmprunt');
   if (searchInput) {
     searchInput.addEventListener('input', function() {
       window.empruntsCurrentSearch = this.value;
@@ -89,14 +64,14 @@ window.setupEmpruntsEventHandlers = function() {
   }
   
   // Événement pour le filtre de statut
-  const filterDropdown = document.getElementById('empruntsFilterDropdown');
+  const filterDropdown = document.getElementById('empruntFilterDropdown');
   if (filterDropdown) {
     filterDropdown.addEventListener('click', function(e) {
       if (e.target.classList.contains('dropdown-item')) {
         e.preventDefault();
         
         // Mettre à jour le filtre actif visuellement
-        document.querySelectorAll('#empruntsFilterDropdown .dropdown-item').forEach(item => {
+        document.querySelectorAll('#empruntFilterDropdown .dropdown-item').forEach(item => {
           item.classList.remove('active');
         });
         e.target.classList.add('active');
@@ -152,21 +127,21 @@ window.fillEmpruntsTable = function(emprunts) {
       row.classList.add('table-success');
     }
     
-    // Formater les dates pour l'affichage
-    let dateDepart = emprunt["Date départ"] || '';
-    let dateRetour = emprunt["Date retour"] || '';
+    // Formatage des dates
+    let dateDepart = emprunt["Date départ"] || "";
+    let dateRetour = emprunt["Date retour"] || "";
     
     row.innerHTML = `
-      <td>${emprunt.ID || ''}</td>
-      <td>${emprunt["Nom Manipulation"] || ''}</td>
+      <td>${emprunt.ID || ""}</td>
+      <td>${emprunt["Nom Manipulation"] || ""}</td>
       <td>${dateDepart} - ${dateRetour}</td>
-      <td><span class="badge ${window.getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ''}</span></td>
-      <td>${emprunt.Emprunteur || ''}</td>
+      <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ""}</span></td>
+      <td>${emprunt.Emprunteur || ""}</td>
       <td>
-        <button class="btn btn-sm btn-outline-primary me-1 btn-view-emprunt" data-id="${emprunt.ID}">
+        <button class="btn btn-sm btn-outline-primary me-1 btn-view" data-id="${emprunt.ID}">
           <i class="fas fa-eye"></i>
         </button>
-        <button class="btn btn-sm btn-outline-secondary btn-edit-emprunt" data-id="${emprunt.ID}">
+        <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${emprunt.ID}">
           <i class="fas fa-edit"></i>
         </button>
       </td>
@@ -175,17 +150,17 @@ window.fillEmpruntsTable = function(emprunts) {
   });
   
   // Ajouter les gestionnaires d'événements pour les boutons d'action
-  document.querySelectorAll('#empruntsTable .btn-view-emprunt').forEach(btn => {
+  document.querySelectorAll('#empruntsTable .btn-view').forEach(btn => {
     btn.addEventListener('click', function() {
-      const empruntId = this.getAttribute('data-id');
-      window.viewEmpruntDetails(empruntId);
+      const itemId = this.getAttribute('data-id');
+      window.viewEmprunt(itemId);
     });
   });
   
-  document.querySelectorAll('#empruntsTable .btn-edit-emprunt').forEach(btn => {
+  document.querySelectorAll('#empruntsTable .btn-edit').forEach(btn => {
     btn.addEventListener('click', function() {
-      const empruntId = this.getAttribute('data-id');
-      window.editEmprunt(empruntId);
+      const itemId = this.getAttribute('data-id');
+      window.editEmprunt(itemId);
     });
   });
 };
@@ -232,41 +207,16 @@ window.updateEmpruntsPagination = function(pagination) {
   });
 };
 
-// Fonction pour obtenir la classe de badge selon le statut
+// Fonction utilitaire pour obtenir la classe de badge selon le statut
 window.getBadgeClass = function(status) {
   switch(status) {
-    case "Pas prêt": return "bg-warning text-dark";
-    case "Prêt": return "bg-success";
-    case "Parti": return "bg-primary";
-    case "Revenu": return "bg-info text-dark";
-    case "Inventorié": return "bg-secondary";
-    default: return "bg-secondary";
+    case 'Pas prêt': return 'bg-warning text-dark';
+    case 'Prêt': return 'bg-primary';
+    case 'Parti': return 'bg-info';
+    case 'Revenu': return 'bg-success';
+    case 'Inventorié': return 'bg-secondary';
+    default: return 'bg-secondary';
   }
-};
-
-// Fonctions pour visualiser et éditer un emprunt
-window.viewEmpruntDetails = function(empruntId) {
-  alert(`Détails de l'emprunt ${empruntId} - Fonctionnalité à implémenter`);
-};
-
-window.editEmprunt = function(empruntId) {
-  window.showSpinner();
-  
-  google.script.run
-    .withSuccessHandler(function(empruntData) {
-      window.hideSpinner();
-      if (empruntData) {
-        window.openEmpruntForm(empruntData);
-      } else {
-        alert('Emprunt non trouvé');
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.error('Erreur lors de la récupération des données de l\'emprunt:', error);
-      window.hideSpinner();
-      alert('Erreur lors de la récupération des données de l\'emprunt');
-    })
-    .getEmpruntByIdFromUI(empruntId);
 };
 
 // Ouvrir le formulaire d'emprunt (pour création ou édition)
@@ -296,26 +246,20 @@ window.openEmpruntForm = function(empruntData = null) {
     document.getElementById('empruntNom').value = empruntData["Nom Manipulation"] || '';
     document.getElementById('empruntLieu').value = empruntData.Lieu || '';
     
-    // Convertir les dates au format YYYY-MM-DD si nécessaire
-    if (empruntData["Date départ"]) {
-      // Si la date est au format JJ/MM/AAAA, la convertir
-      if (empruntData["Date départ"].includes('/')) {
-        const parts = empruntData["Date départ"].split('/');
-        document.getElementById('empruntDateDepart').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      } else {
-        document.getElementById('empruntDateDepart').value = empruntData["Date départ"];
-      }
+    // Conversion des dates au format YYYY-MM-DD si nécessaire
+    let dateDepart = empruntData["Date départ"] || '';
+    if (dateDepart && dateDepart.includes('/')) {
+      const parts = dateDepart.split('/');
+      dateDepart = `${parts[2]}-${parts[1]}-${parts[0]}`; // Format YYYY-MM-DD
     }
+    document.getElementById('empruntDateDepart').value = dateDepart || todayFormatted;
     
-    if (empruntData["Date retour"]) {
-      // Si la date est au format JJ/MM/AAAA, la convertir
-      if (empruntData["Date retour"].includes('/')) {
-        const parts = empruntData["Date retour"].split('/');
-        document.getElementById('empruntDateRetour').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      } else {
-        document.getElementById('empruntDateRetour').value = empruntData["Date retour"];
-      }
+    let dateRetour = empruntData["Date retour"] || '';
+    if (dateRetour && dateRetour.includes('/')) {
+      const parts = dateRetour.split('/');
+      dateRetour = `${parts[2]}-${parts[1]}-${parts[0]}`; // Format YYYY-MM-DD
     }
+    document.getElementById('empruntDateRetour').value = dateRetour || returnDateFormatted;
     
     document.getElementById('empruntSecteur').value = empruntData.Secteur || '';
     document.getElementById('empruntReferent').value = empruntData.Référent || '';
@@ -331,10 +275,62 @@ window.openEmpruntForm = function(empruntData = null) {
   modal.show();
 };
 
-// Sauvegarder les données du formulaire
+// Éditer un emprunt existant
+window.editEmprunt = function(itemId) {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(empruntData) {
+      window.hideSpinner();
+      if (empruntData) {
+        window.openEmpruntForm(empruntData);
+      } else {
+        alert('Emprunt non trouvé');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de la récupération des données de l\'emprunt:', error);
+      window.hideSpinner();
+      alert('Erreur lors de la récupération des données de l\'emprunt');
+    })
+    .getEmpruntForEdit(itemId);
+};
+
+// Visualiser les détails d'un emprunt
+window.viewEmprunt = function(itemId) {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(empruntData) {
+      window.hideSpinner();
+      if (empruntData) {
+        // Pour l'instant, simplement afficher les détails dans une alerte
+        alert(`Détails de l'emprunt ${empruntData.ID}:\n
+Nom: ${empruntData["Nom Manipulation"]}\n
+Lieu: ${empruntData.Lieu}\n
+Dates: ${empruntData["Date départ"]} - ${empruntData["Date retour"]}\n
+Statut: ${empruntData.Statut}\n
+Emprunteur: ${empruntData.Emprunteur}`);
+        
+        // Note: Dans une version future, nous pourrions créer une page de détails dédiée
+      } else {
+        alert('Emprunt non trouvé');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors de la récupération des détails de l\'emprunt:', error);
+      window.hideSpinner();
+      alert('Erreur lors de la récupération des détails de l\'emprunt');
+    })
+    .getEmpruntForView(itemId);
+};
+
+// Sauvegarder les données du formulaire d'emprunt
 window.saveEmpruntForm = function() {
   // Valider le formulaire
   const form = document.getElementById('empruntForm');
+  if (!form) return;
+  
   if (!form.checkValidity()) {
     form.reportValidity();
     return;
@@ -363,13 +359,13 @@ window.saveEmpruntForm = function() {
         // Fermer le modal
         bootstrap.Modal.getInstance(document.getElementById('empruntModal')).hide();
         
-        // Afficher un message de succès
-        alert('Emprunt enregistré avec succès !');
-        
         // Recharger les données
         window.loadEmpruntsData();
+        
+        // Afficher un message de succès
+        alert('Emprunt enregistré avec succès');
       } else {
-        alert('Erreur lors de l\'enregistrement de l\'emprunt.');
+        alert('Erreur lors de l\'enregistrement de l\'emprunt');
       }
     })
     .withFailureHandler(function(error) {
