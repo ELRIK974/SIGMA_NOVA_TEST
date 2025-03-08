@@ -6,13 +6,36 @@
 // Obtenir tous les emprunts
 function getAllEmprunts() {
   try {
-    return getAllData("Emprunts");
+    // S'assurer que la feuille Emprunts existe avec les bons en-têtes
+    const headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", 
+                    "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"];
+    
+    let sheet;
+    try {
+      sheet = getSheetByName("Emprunts");
+      if (!sheet) {
+        // Créer la feuille si elle n'existe pas
+        const spreadsheet = getSpreadsheet();
+        sheet = spreadsheet.insertSheet("Emprunts");
+        sheet.appendRow(headers);
+      }
+    } catch (e) {
+      console.error("Erreur lors de l'accès/création de la feuille Emprunts:", e);
+      return []; // Retourner un tableau vide plutôt que null
+    }
+    
+    // Récupérer les données de manière sécurisée
+    try {
+      return getAllData("Emprunts") || [];
+    } catch (dataError) {
+      console.error("Erreur lors de la récupération des données:", dataError);
+      return []; // Toujours retourner un tableau vide en cas d'erreur
+    }
   } catch (error) {
-    console.error("Erreur dans getAllEmprunts:", error);
-    return [];
+    console.error("Erreur générale dans getAllEmprunts:", error);
+    return []; // Garantir qu'on retourne toujours un tableau
   }
 }
-
 // Créer un nouvel emprunt
 function createEmprunt(empruntData) {
   try {
@@ -58,29 +81,4 @@ function updateEmprunt(id, empruntData) {
     console.error("Erreur dans updateEmprunt:", error);
     return false;
   }
-}
-// Supprimer un emprunt
-function deleteEmprunt(id) {
-  try {
-    return deleteRow("Emprunts", "ID", id);
-  } catch (error) {
-    console.error("Erreur dans deleteEmprunt:", error);
-    return false;
-  }
-}
-
-// Convertir une date du format YYYY-MM-DD au format JJ/MM/AAAA
-function formatDateForDisplay(date) {
-  if (!date) return '';
-  
-  // Si la date est déjà au format JJ/MM/AAAA, la retourner telle quelle
-  if (date.includes('/')) return date;
-  
-  // Sinon, convertir du format YYYY-MM-DD au format JJ/MM/AAAA
-  const parts = date.split('-');
-  if (parts.length === 3) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  
-  return date;
 }
