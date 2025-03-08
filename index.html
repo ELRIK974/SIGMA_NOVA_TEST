@@ -381,6 +381,7 @@ function handleError(error) {
   }
   
   // Fonction pour naviguer vers une page
+// Remplacer la fonction navigateTo dans index.html par celle-ci :
 function navigateTo(page) {
   // Éviter de recharger la même page
   if (currentPage === page) {
@@ -392,9 +393,6 @@ function navigateTo(page) {
   window.location.hash = page;
   updateActiveNavLink(page);
   showSpinner();
-
-  // Le reste de votre code...
-}
 
   // Nettoyer les écouteurs d'événements précédents
   cleanupEventListeners();
