@@ -182,37 +182,50 @@ function getStockCSVExport() {
 // Obtenir les données pour la page Emprunts avec pagination
 function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
   try {
-    // Récupérer tous les emprunts
-    const emprunts = getAllEmprunts();
-    let filteredEmprunts = emprunts;
+    // Valider et convertir les paramètres d'entrée
+    page = Math.max(1, parseInt(page) || 1);
+    pageSize = Math.max(1, parseInt(pageSize) || 10);
     
-    // Appliquer le filtre par statut si spécifié
-    if (filterStatus && filterStatus !== 'Tous') {
-      filteredEmprunts = filteredEmprunts.filter(emp => emp.Statut === filterStatus);
+    // Récupérer tous les emprunts en s'assurant qu'on obtient au minimum un tableau vide
+    let emprunts = [];
+    try {
+      emprunts = getAllEmprunts() || [];
+      if (!Array.isArray(emprunts)) {
+        console.error("getAllEmprunts() n'a pas renvoyé un tableau:", emprunts);
+        emprunts = [];
+      }
+    } catch (err) {
+      console.error("Erreur lors de la récupération des emprunts:", err);
+      emprunts = [];
     }
     
-    // Appliquer le filtre de recherche si spécifié
+    let filteredEmprunts = emprunts;
+    
+    // Appliquer les filtres de façon sécurisée
+    if (filterStatus && filterStatus !== 'Tous') {
+      filteredEmprunts = filteredEmprunts.filter(emp => emp && emp.Statut === filterStatus);
+    }
+    
     if (searchTerm && searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase().trim();
       filteredEmprunts = filteredEmprunts.filter(emp => 
-        (emp["Nom Manipulation"] && emp["Nom Manipulation"].toLowerCase().includes(term)) || 
-        (emp.Emprunteur && emp.Emprunteur.toLowerCase().includes(term))
+        emp && ((emp["Nom Manipulation"] && emp["Nom Manipulation"].toLowerCase().includes(term)) || 
+        (emp.Emprunteur && emp.Emprunteur.toLowerCase().includes(term)))
       );
     }
     
-    // Calculer le nombre total de pages
+    // Calcul de la pagination
     const totalItems = filteredEmprunts.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1; // Au moins 1 page même si vide
-    
-    // Extraction pour la pagination
-    const startIndex = (page - 1) * pageSize;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const validPage = Math.min(page, totalPages);
+    const startIndex = (validPage - 1) * pageSize;
     const paginatedItems = filteredEmprunts.slice(startIndex, startIndex + pageSize);
     
-    // Retourner les données et les informations de pagination
+    // Toujours retourner un objet valide avec la structure attendue
     return {
       emprunts: paginatedItems,
       pagination: {
-        currentPage: page,
+        currentPage: validPage,
         pageSize: pageSize,
         totalItems: totalItems,
         totalPages: totalPages
@@ -220,6 +233,7 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     };
   } catch (error) {
     console.error("Erreur dans getEmpruntsPageData:", error);
+    // Toujours retourner un objet valide même en cas d'erreur catastrophique
     return {
       emprunts: [],
       pagination: {
