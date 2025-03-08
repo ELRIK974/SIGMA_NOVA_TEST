@@ -6,121 +6,102 @@
 // Fonction pour ajouter des emprunts de test
 function addTestEmprunts() {
   try {
-    const sheet = getSheetByName("Emprunts");
+    // Assurer l'existence de la feuille avec les en-têtes requis
+    const headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", 
+                     "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"];
     
-    // Vérifier si la feuille existe
-    if (!sheet) {
-      console.error("La feuille 'Emprunts' n'existe pas");
-      return "Erreur: La feuille 'Emprunts' n'existe pas";
-    }
+    const sheet = ensureSheetExists("Emprunts", headers);
     
-    // Vérifier si des en-têtes existent déjà
-    let headers = [];
-    if (sheet.getLastRow() > 0) {
-      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    } else {
-      // Définir les en-têtes si la feuille est vide
-      headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création"];
-      sheet.appendRow(headers);
-    }
+    // Préparer des données de test avec des dates valides
+    const today = new Date();
+    const formatDate = (date) => {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
     
-    // Ajouter des emprunts de test
+    // Date de départ (aujourd'hui)
+    const departDate = formatDate(today);
+    
+    // Date de retour (aujourd'hui + 15 jours)
+    const retourDate = new Date(today);
+    retourDate.setDate(today.getDate() + 15);
+    const formattedRetour = formatDate(retourDate);
+    
+    // Création date
+    const creationDate = formatDate(today);
+    
+    // Créer les données de test
     const testEmprunts = [
       {
         ID: generateUniqueId(),
-        "Nom Manipulation": "Animation Astronomie",
-        "Lieu": "Collège Jean Moulin",
-        "Date départ": "01/03/2025",
-        "Date retour": "15/03/2025",
-        "Secteur": "Astronomie",
-        "Référent": "Thomas Durand",
-        "Emprunteur": "Marie Dupont",
+        "Nom Manipulation": "Animation Scientifique",
+        "Lieu": "École Jean Moulin",
+        "Date départ": departDate,
+        "Date retour": formattedRetour,
+        "Secteur": "Sciences",
+        "Référent": "Thomas Martin",
+        "Emprunteur": "Marie Laurent",
         "Statut": "Pas prêt",
-        "Date création": new Date().toLocaleDateString("fr-FR")
+        "Date création": creationDate,
+        "Notes": "Test généré automatiquement"
       },
       {
         ID: generateUniqueId(),
         "Nom Manipulation": "Atelier Robotique",
-        "Lieu": "École Primaire Voltaire",
-        "Date départ": "10/03/2025",
-        "Date retour": "12/03/2025",
-        "Secteur": "Robotique",
-        "Référent": "Sophie Martin",
-        "Emprunteur": "Sophie Martin",
+        "Lieu": "Collège Victor Hugo",
+        "Date départ": departDate,
+        "Date retour": formattedRetour,
+        "Secteur": "Technologie",
+        "Référent": "Sophie Dupont",
+        "Emprunteur": "Jean Durand",
         "Statut": "Prêt",
-        "Date création": new Date().toLocaleDateString("fr-FR")
-      },
-      {
-        ID: generateUniqueId(),
-        "Nom Manipulation": "Exposition Biodiversité",
-        "Lieu": "Médiathèque Centrale",
-        "Date départ": "15/02/2025",
-        "Date retour": "28/02/2025",
-        "Secteur": "Environnement",
-        "Référent": "Lucas Bernard",
-        "Emprunteur": "Julie Petit",
-        "Statut": "Revenu",
-        "Date création": new Date(Date.now() - 15*24*60*60*1000).toLocaleDateString("fr-FR")
+        "Date création": creationDate,
+        "Notes": "Test généré automatiquement"
       }
     ];
     
     let addedCount = 0;
     
-    // Ajouter chaque emprunt de test
-    testEmprunts.forEach(emprunt => {
-      // Vérifier que l'emprunt n'existe pas déjà (basé sur le nom et le lieu)
-      const allEmprunts = getAllEmprunts();
-      const exists = allEmprunts.some(e => 
-        e["Nom Manipulation"] === emprunt["Nom Manipulation"] && 
-        e["Lieu"] === emprunt["Lieu"]
-      );
-      
-      if (!exists) {
+    // Vérifier si la feuille est vide (sauf en-têtes)
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      console.log("La feuille est vide, ajout direct des données");
+      // Ajouter directement les emprunts de test
+      testEmprunts.forEach(emprunt => {
         // Créer un tableau dans le même ordre que les en-têtes
         const rowArray = headers.map(header => emprunt[header] || '');
-        
-        // Ajouter la ligne
         sheet.appendRow(rowArray);
         addedCount++;
-      }
-    });
+      });
+    } else {
+      console.log("La feuille contient déjà des données, vérification des doublons");
+      // Vérification de doublons si des données existent déjà
+      const allEmprunts = getAllData("Emprunts") || [];
+      
+      testEmprunts.forEach(emprunt => {
+        // Vérifier que l'emprunt n'existe pas déjà
+        const exists = allEmprunts.some(e => 
+          e["Nom Manipulation"] === emprunt["Nom Manipulation"] && 
+          e["Lieu"] === emprunt["Lieu"]
+        );
+        
+        if (!exists) {
+          // Ajouter si n'existe pas
+          const rowArray = headers.map(header => emprunt[header] || '');
+          sheet.appendRow(rowArray);
+          addedCount++;
+        }
+      });
+    }
+    
+    // Forcer l'invalidation du cache
+    invalidateDataCache("Emprunts");
     
     return `${addedCount} emprunts de test ajoutés avec succès`;
   } catch (error) {
     console.error("Erreur lors de l'ajout des emprunts de test:", error);
     return "Erreur: " + error.toString();
-  }
-}
-// Fonction pour tester la connexion à la feuille Emprunts
-function testEmpruntsConnection() {
-  try {
-    const sheet = getSheetByName("Emprunts");
-    
-    if (!sheet) {
-      const spreadsheet = getSpreadsheet();
-      const newSheet = spreadsheet.insertSheet("Emprunts");
-      newSheet.appendRow(["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création"]);
-      
-      return {
-        success: true,
-        message: "Feuille Emprunts créée avec succès",
-        sheetName: "Emprunts"
-      };
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    
-    return {
-      success: true,
-      message: "Connexion à la feuille Emprunts réussie",
-      rowCount: data.length,
-      headers: data[0]
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: "Erreur lors du test de la feuille Emprunts: " + error.toString(),
-      error: error.toString()
-    };
   }
 }
