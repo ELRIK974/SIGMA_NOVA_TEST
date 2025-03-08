@@ -100,6 +100,7 @@ window.loadEmpruntsData = function() {
 };
 
 // Configuration des gestionnaires d'événements pour la page Emprunts
+// Remplacer la fonction dans empruntsUIFunctions.html
 window.setupEmpruntsEventHandlers = function() {
   // Événement pour la recherche
   const searchInput = document.getElementById('searchEmprunt');
@@ -110,8 +111,9 @@ window.setupEmpruntsEventHandlers = function() {
       window.loadEmpruntsData();
     });
   }
+  
   // Ajouter le gestionnaire pour le bouton de diagnostic
- const btnDiagnostic = document.getElementById('btnDiagnostic');
+  const btnDiagnostic = document.getElementById('btnDiagnostic');
   if (btnDiagnostic) {
     btnDiagnostic.addEventListener('click', function() {
       window.showSpinner();
@@ -184,7 +186,7 @@ window.setupEmpruntsEventHandlers = function() {
         .checkSystemStatus();
     });
   }
-};
+  
   // Événement pour le filtre de statut
   const filterDropdown = document.getElementById('empruntFilterDropdown');
   if (filterDropdown) {
