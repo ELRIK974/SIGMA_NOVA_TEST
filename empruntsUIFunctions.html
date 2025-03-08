@@ -47,58 +47,94 @@ window.initializeEmpruntsPage = function() {
 // Fonction pour charger les données des emprunts
 window.loadEmpruntsData = function() {
   window.showSpinner();
+  console.log("Chargement des données des emprunts...");
   
+  // Vérifier d'abord si la feuille existe et contient des données
   google.script.run
-    .withSuccessHandler(function(data) {
-      window.hideSpinner();
-      console.log('Données reçues:', data);
+    .withSuccessHandler(function(testResult) {
+      console.log("Test de connexion emprunts:", testResult);
       
-      if (data && data.emprunts) {
-        window.fillEmpruntsTable(data.emprunts);
-        window.updateEmpruntsPagination(data.pagination);
+      if (!testResult.success) {
+        // Si la feuille n'existe pas, on l'initialise d'abord
+        google.script.run
+          .withSuccessHandler(function(initResult) {
+            console.log("Résultat initialisation:", initResult);
+            // Après initialisation, on charge les données
+            loadEmpruntsDataFromServer();
+          })
+          .withFailureHandler(function(error) {
+            window.hideSpinner();
+            showErrorMessage("Erreur d'initialisation: " + error);
+          })
+          .addTestEmprunts();
       } else {
-        console.error('Format de données incorrect:', data);
-        // Utiliser la notification au lieu d'une alerte
-        showErrorMessage('Format de données incorrect reçu du serveur. Essayez de réinitialiser l\'application.');
-        
-        // Ajouter un bouton de réinitialisation
-        const mainContent = document.querySelector('#empruntsPage');
-        if (mainContent) {
-          const resetButton = document.createElement('button');
-          resetButton.className = 'btn btn-warning mt-3';
-          resetButton.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Initialiser les données';
-          resetButton.onclick = function() {
-            window.showSpinner();
-            google.script.run
-              .withSuccessHandler(function(result) {
-                window.hideSpinner();
-                if (result.success) {
-                  showSuccessMessage("Initialisation réussie. Rechargement des données...");
-                  setTimeout(window.loadEmpruntsData, 1000);
-                } else {
-                  showErrorMessage("Échec de l'initialisation: " + result.message);
-                }
-              })
-              .withFailureHandler(function(error) {
-                window.hideSpinner();
-                showErrorMessage("Erreur lors de l'initialisation: " + error);
-              })
-              .initializeApplication();
-          };
-          
-          // Ajouter au début du contenu
-          mainContent.insertBefore(resetButton, mainContent.firstChild);
-        }
+        // Si la feuille existe, on charge directement les données
+        loadEmpruntsDataFromServer();
       }
     })
     .withFailureHandler(function(error) {
-      console.error('Erreur lors du chargement des données:', error);
       window.hideSpinner();
-      showErrorMessage('Erreur lors du chargement des données: ' + error);
+      showErrorMessage("Erreur de test: " + error);
     })
-    .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
+    .testEmpruntsConnection();
+  
+  // Fonction interne pour charger les données du serveur
+  function loadEmpruntsDataFromServer() {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        window.hideSpinner();
+        console.log('Données reçues:', data);
+        
+        if (data && data.emprunts) {
+          window.fillEmpruntsTable(data.emprunts);
+          window.updateEmpruntsPagination(data.pagination);
+          if (data.emprunts.length === 0) {
+            showInfoMessage("Aucun emprunt trouvé. Vous pouvez en créer un nouveau.");
+          }
+        } else {
+          console.error('Format de données incorrect:', data);
+          showErrorMessage('Format de données incorrect reçu du serveur.');
+          
+          // Ajouter un bouton de réinitialisation si nécessaire
+          const mainContent = document.querySelector('#empruntsPage');
+          if (mainContent && !document.getElementById('btnResetEmprunts')) {
+            const resetButton = document.createElement('button');
+            resetButton.id = 'btnResetEmprunts';
+            resetButton.className = 'btn btn-warning mt-3';
+            resetButton.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Réinitialiser les données';
+            resetButton.onclick = function() {
+              window.showSpinner();
+              google.script.run
+                .withSuccessHandler(function(result) {
+                  window.hideSpinner();
+                  showSuccessMessage(result);
+                  setTimeout(window.loadEmpruntsData, 1000);
+                })
+                .withFailureHandler(function(error) {
+                  window.hideSpinner();
+                  showErrorMessage("Erreur: " + error);
+                })
+                .addTestEmprunts();
+            };
+            
+            // Ajouter au début du contenu
+            const targetElement = mainContent.querySelector('.card');
+            if (targetElement) {
+              mainContent.insertBefore(resetButton, targetElement);
+            } else {
+              mainContent.appendChild(resetButton);
+            }
+          }
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Erreur lors du chargement des données:', error);
+        window.hideSpinner();
+        showErrorMessage('Erreur lors du chargement des données: ' + error);
+      })
+      .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
+  }
 };
-
 // Configuration des gestionnaires d'événements pour la page Emprunts
 // Remplacer la fonction dans empruntsUIFunctions.html
 window.setupEmpruntsEventHandlers = function() {
@@ -153,39 +189,97 @@ window.setupEmpruntsEventHandlers = function() {
           modalInstance.show();
           
           // Ajouter le gestionnaire d'événements pour le bouton de réparation
-          modal.querySelector('#btnFixSystem').addEventListener('click', function() {
-            window.showSpinner();
-            modalInstance.hide();
-            
-            google.script.run
-              .withSuccessHandler(function(fixResult) {
-                window.hideSpinner();
-                if (fixResult && fixResult.success) {
-                  showSuccessMessage("Système réparé avec succès. Rechargement des données...");
-                  setTimeout(window.loadEmpruntsData, 1000);
-                } else {
-                  showErrorMessage("Échec de la réparation: " + (fixResult ? fixResult.message : "Erreur inconnue"));
-                }
-              })
-              .withFailureHandler(function(error) {
-                window.hideSpinner();
-                showErrorMessage("Erreur lors de la réparation: " + error);
-              })
-              .initializeApplication();
-          });
+          // Gestionnaire pour le bouton de diagnostic des emprunts
+const btnDiagnosticEmprunts = document.getElementById('btnDiagnosticEmprunts');
+if (btnDiagnosticEmprunts) {
+  btnDiagnosticEmprunts.addEventListener('click', function() {
+    window.showSpinner();
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideSpinner();
+        console.log("Diagnostic des emprunts:", result);
+        
+        // Créer un modal pour afficher les résultats de diagnostic
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'diagnosticEmpruntsModal';
+        modal.setAttribute('tabindex', '-1');
+        modal.innerHTML = `
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Diagnostic des emprunts</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+              </div>
+              <div class="modal-body">
+                <pre style="max-height: 400px; overflow: auto;">${JSON.stringify(result, null, 2)}</pre>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnFixEmprunts">
+                  <i class="fas fa-wrench me-1"></i> Réparer les emprunts
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        // Gestionnaire pour le bouton de réparation
+        modal.querySelector('#btnFixEmprunts').addEventListener('click', function() {
+          window.showSpinner();
+          modalInstance.hide();
           
-          // Supprimer le modal du DOM après sa fermeture
-          modal.addEventListener('hidden.bs.modal', function() {
-            document.body.removeChild(modal);
-          });
-        })
-        .withFailureHandler(function(error) {
-          window.hideSpinner();
-          showErrorMessage("Erreur lors du diagnostic: " + error);
-        })
-        .checkSystemStatus();
-    });
-  }
+          google.script.run
+            .withSuccessHandler(function(repairResult) {
+              window.hideSpinner();
+              showSuccessMessage(repairResult);
+              setTimeout(window.loadEmpruntsData, 1000);
+            })
+            .withFailureHandler(function(error) {
+              window.hideSpinner();
+              showErrorMessage("Erreur: " + error);
+            })
+            .addTestEmprunts();
+        });
+        
+        // Nettoyer le DOM après fermeture
+        modal.addEventListener('hidden.bs.modal', function() {
+          document.body.removeChild(modal);
+        });
+      })
+      .withFailureHandler(function(error) {
+        window.hideSpinner();
+        showErrorMessage("Erreur: " + error);
+      })
+      .diagnosticEmprunts();
+  });
+}
+
+// Gestionnaire pour le bouton de rechargement forcé
+const btnForceRefresh = document.getElementById('btnForceRefresh');
+if (btnForceRefresh) {
+  btnForceRefresh.addEventListener('click', function() {
+    // Invalider le cache côté client
+    window.empruntsCurrentPage = 1;
+    
+    // Forcer le rechargement complet
+    window.showSpinner();
+    google.script.run
+      .withSuccessHandler(function() {
+        // Recharger après invalidation du cache côté serveur
+        window.loadEmpruntsData();
+      })
+      .withFailureHandler(function(error) {
+        window.hideSpinner();
+        showErrorMessage("Erreur: " + error);
+      })
+      .invalidateDataCache("Emprunts");
+  });
+}
   
   // Événement pour le filtre de statut
   const filterDropdown = document.getElementById('empruntFilterDropdown');
