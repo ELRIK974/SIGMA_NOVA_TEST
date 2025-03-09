@@ -180,11 +180,31 @@ function getStockCSVExport() {
 }
 
 // Obtenir les données pour la page Emprunts avec pagination
+// Obtenir les données pour la page Emprunts avec pagination
 function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
   try {
+    // Vérifier si la feuille existe, sinon la créer
+    const sheet = getSheetByName("Emprunts");
+    if (!sheet) {
+      // Créer la feuille et y ajouter des données de test
+      checkAndCreateEmpruntsSheet();
+      addTestEmprunts();
+      
+      // Retourner une réponse minimale pour éviter l'erreur
+      return {
+        emprunts: [],
+        pagination: {
+          currentPage: 1,
+          pageSize: pageSize || 10,
+          totalItems: 0,
+          totalPages: 1
+        }
+      };
+    }
+    
     // Récupérer tous les emprunts
     const emprunts = getAllEmprunts();
-    let filteredEmprunts = emprunts;
+    let filteredEmprunts = emprunts || [];
     
     // Appliquer le filtre par statut si spécifié
     if (filterStatus && filterStatus !== 'Tous') {
@@ -212,19 +232,22 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     return {
       emprunts: paginatedItems,
       pagination: {
-        currentPage: page,
-        pageSize: pageSize,
+        currentPage: parseInt(page) || 1,
+        pageSize: parseInt(pageSize) || 10,
         totalItems: totalItems,
         totalPages: totalPages
       }
     };
   } catch (error) {
     console.error("Erreur dans getEmpruntsPageData:", error);
+    Logger.log("Erreur dans getEmpruntsPageData: " + error);
+    
+    // Retourner un objet de données minimal mais valide pour éviter les erreurs côté client
     return {
       emprunts: [],
       pagination: {
         currentPage: 1,
-        pageSize: pageSize || 10,
+        pageSize: parseInt(pageSize) || 10,
         totalItems: 0,
         totalPages: 1
       }
