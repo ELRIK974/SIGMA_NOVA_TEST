@@ -28,6 +28,7 @@ window.initializeEmpruntsPage = function() {
 };
 
 // Fonction pour charger les données des emprunts
+// Fonction pour charger les données des emprunts
 window.loadEmpruntsData = function() {
   window.showSpinner();
   
@@ -41,15 +42,55 @@ window.loadEmpruntsData = function() {
         window.updateEmpruntsPagination(data.pagination);
       } else {
         console.error('Format de données incorrect:', data);
-        alert('Format de données incorrect reçu du serveur');
+        
+        // Afficher un message plus utile
+        const tbody = document.querySelector('#empruntsTable tbody');
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+            <div class="alert alert-warning">
+              Aucune donnée d'emprunt disponible. Veuillez créer un nouvel emprunt.
+            </div>
+          </td></tr>`;
+        }
       }
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement des données d\'emprunts:', error);
       window.hideSpinner();
-      alert('Erreur lors du chargement des données: ' + error);
+      
+      // Afficher un message plus détaillé
+      const tbody = document.querySelector('#empruntsTable tbody');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+          <div class="alert alert-danger">
+            Erreur lors du chargement des données: ${error}
+            <br>
+            <button class="btn btn-sm btn-primary mt-2" onclick="window.addTestDataAndReload()">
+              Initialiser les données de test
+            </button>
+          </div>
+        </td></tr>`;
+      }
     })
     .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
+};
+
+// Fonction pour ajouter des données de test et recharger
+window.addTestDataAndReload = function() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      console.log('Résultat de l\'ajout de données de test:', result);
+      // Recharger les données
+      window.loadEmpruntsData();
+    })
+    .withFailureHandler(function(error) {
+      window.hideSpinner();
+      console.error('Erreur lors de l\'ajout de données de test:', error);
+      alert('Erreur lors de l\'ajout de données de test: ' + error);
+    })
+    .addTestEmprunts();
 };
 
 // Configuration des gestionnaires d'événements pour la page Emprunts
