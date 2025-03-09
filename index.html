@@ -2,13 +2,6 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script>
-  // Code de débogage pour tracer les problèmes d'initialisation
-  window.addEventListener('error', function(event) {
-    console.error('ERREUR GLOBALE:', event.error);
-    alert('Une erreur est survenue: ' + event.error.message + '\nConsultez la console pour plus de détails.');
-  });
-</script>
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -388,77 +381,43 @@ function handleError(error) {
   }
   
   // Fonction pour naviguer vers une page
-// Remplacer la fonction navigateTo dans index.html par celle-ci :
+ // 
 function navigateTo(page) {
-  // Éviter de recharger la même page
-  if (currentPage === page) {
-    console.log(`Déjà sur la page ${page}`);
-    return;
-  }
-  
   currentPage = page;
   window.location.hash = page;
   updateActiveNavLink(page);
   showSpinner();
 
-  // Nettoyer les écouteurs d'événements précédents
-  cleanupEventListeners();
-  
   google.script.run
     .withSuccessHandler(function(html) {
       const mainContent = document.getElementById('mainContent');
-      
-      // Créer un conteneur temporaire pour analyser le HTML
-      const tempContainer = document.createElement('div');
-      tempContainer.innerHTML = html;
-      
-      // Extraire les scripts avant de modifier le DOM
-      const scripts = Array.from(tempContainer.querySelectorAll('script'));
-      const scriptContents = scripts.map(script => {
-        return {
-          src: script.src,
-          content: script.textContent
-        };
-      });
-      
-      // Remplacer le contenu sans les scripts
-      scripts.forEach(script => script.remove());
-      mainContent.innerHTML = tempContainer.innerHTML;
-      
-      // Exécuter les scripts dans l'ordre
-      let scriptsLoaded = 0;
-      
-      if (scriptContents.length === 0) {
-        // Aucun script à charger
+      mainContent.innerHTML = html;
+
+      // Initialiser notre objet global pour mémoriser les pages déjà chargées
+      window.loadedPages = window.loadedPages || {};
+
+      // Si la page n'a pas encore été chargée (scripts non injectés), injecter les scripts
+      if (!window.loadedPages[page]) {
+        const dynamicScripts = mainContent.querySelectorAll('script');
+        dynamicScripts.forEach(oldScript => {
+          const newScript = document.createElement('script');
+          newScript.setAttribute('data-dynamic', 'true');
+          if (oldScript.src) {
+            newScript.src = oldScript.src;
+          } else {
+            newScript.textContent = oldScript.textContent;
+          }
+          document.body.appendChild(newScript);
+        });
+        // Marquer cette page comme chargée
+        window.loadedPages[page] = true;
+      }
+
+      // Après un court délai pour s'assurer que les scripts ont été exécutés
+      setTimeout(() => {
         initializePage(page);
         hideSpinner();
-        return;
-      }
-      
-      scriptContents.forEach((scriptInfo, index) => {
-        const newScript = document.createElement('script');
-        newScript.setAttribute('data-page', page);
-        
-        if (scriptInfo.src) {
-          newScript.src = scriptInfo.src;
-          newScript.onload = checkIfAllScriptsLoaded;
-        } else {
-          newScript.textContent = scriptInfo.content;
-          // Pour les scripts inline, on considère qu'ils sont chargés immédiatement
-          setTimeout(checkIfAllScriptsLoaded, 0);
-        }
-        
-        document.body.appendChild(newScript);
-      });
-      
-      function checkIfAllScriptsLoaded() {
-        scriptsLoaded++;
-        if (scriptsLoaded >= scriptContents.length) {
-          // Tous les scripts sont chargés
-          initializePage(page);
-          hideSpinner();
-        }
-      }
+      }, 100);
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement de la page:', error);
@@ -468,27 +427,6 @@ function navigateTo(page) {
     .getPageContent(page);
 }
 
-// Fonction pour nettoyer les écouteurs d'événements
-function cleanupEventListeners() {
-  // Supprimer tous les scripts dynamiques précédents
-  document.querySelectorAll('script[data-page]').forEach(script => {
-    script.remove();
-  });
-  
-  // Nettoyer certains éléments qui pourraient avoir des écouteurs
-  const elementsToClean = [
-    'btnNouvelArticle', 'btnExportStock', 'searchStock', 
-    'btnNouvelEmprunt', 'searchEmprunt'
-  ];
-  
-  elementsToClean.forEach(id => {
-    const element = document.getElementById(id);
-    if (element) {
-      const newElement = element.cloneNode(true);
-      element.parentNode.replaceChild(newElement, element);
-    }
-  });
-}
 
 
   // Mettre à jour le lien actif dans la navigation
@@ -506,43 +444,28 @@ function cleanupEventListeners() {
   }
   
   // Initialiser la page selon son type
-  // Initialiser la page selon son type
-function initializePage(page) {
-  console.log(`Initialisation de la page: ${page}`);
-  
-  switch(page) {
-    case 'dashboard':
-      loadDashboardData();
-      break;
-    case 'emprunts':
-      // S'assurer que window.initializeEmpruntsPage existe
-      if (typeof window.initializeEmpruntsPage === 'function') {
-        // Réinitialiser le compteur de tentatives
-        window.empruntsInitAttempts = 0;
-        window.initializeEmpruntsPage();
-      } else {
-        console.error('La fonction window.initializeEmpruntsPage n\'existe pas');
-        showErrorMessage('Erreur: Impossible d\'initialiser la page Emprunts');
-      }
-      break;
-    case 'stock':
-      if (typeof window.initializeStockPage === 'function') {
-        window.initializeStockPage();
-      }
-      break;
-    case 'modules':
-      // Code pour modules
-      break;
-    case 'livraisons':
-      // Code pour livraisons
-      break;
-    case 'options':
-      // Pas besoin d'initialisation spéciale
-      break;
-    default:
-      console.log(`Page inconnue: ${page}`);
+  function initializePage(page) {
+    switch(page) {
+      case 'dashboard':
+        loadDashboardData();
+        break;
+      case 'emprunts':
+        initializeEmpruntsPage();
+        break;
+      case 'stock':
+        initializeStockPage();
+        break;
+      case 'modules':
+        initializeModulesPage();
+        break;
+      case 'livraisons':
+        initializeLivraisonsPage();
+        break;
+      case 'options':
+        // Pas besoin d'initialisation spéciale pour l'instant
+        break;
+    }
   }
-}
   
   // Fonctions d'initialisation pour chaque page (à développer plus tard)
   function initializeEmpruntsPage() {
@@ -732,281 +655,8 @@ function testStockConnectionEmergency() {
     })
     .testGetAllStock(); // Utiliser la fonction de test dédiée
 }
-/**
- * Met à jour efficacement un tableau en réutilisant les lignes existantes
- * @param {string} tableId - ID du tableau à mettre à jour
- * @param {Array} items - Données à afficher
- * @param {Function} rowRenderer - Fonction pour générer le HTML d'une ligne
- * @param {Function} rowClassFn - Fonction pour appliquer des classes aux lignes
- */
-function updateTableEfficiently(tableId, items, rowRenderer, rowClassFn = null) {
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  if (!tbody) return;
-  
-  // Message si aucune donnée
-  if (!items || items.length === 0) {
-    const colCount = document.querySelector(`#${tableId} thead tr`)?.children.length || 6;
-    tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center">Aucune donnée disponible</td></tr>`;
-    return;
-  }
-  
-  // Réutiliser les lignes existantes si possible
-  const currentRows = tbody.children;
-  const rowsNeeded = items.length;
-  
-  // 1. Cas particulier: tbody contient uniquement un message "Aucune donnée"
-  if (currentRows.length === 1 && currentRows[0].querySelector('td[colspan]')) {
-    tbody.innerHTML = ''; // Vider le contenu existant
-  }
-  
-  // 2. Supprimer les lignes en trop
-  while (currentRows.length > rowsNeeded) {
-    tbody.removeChild(tbody.lastChild);
-  }
-  
-  // 3. Mettre à jour ou ajouter des lignes
-  items.forEach((item, index) => {
-    let row;
-    
-    if (index < currentRows.length) {
-      // Mettre à jour une ligne existante
-      row = currentRows[index];
-      row.innerHTML = rowRenderer(item);
-    } else {
-      // Créer une nouvelle ligne
-      row = document.createElement('tr');
-      row.innerHTML = rowRenderer(item);
-      tbody.appendChild(row);
-    }
-    
-    // Appliquer des classes conditionnelles
-    if (rowClassFn) {
-      rowClassFn(row, item);
-    }
-  });
-  
-  // 4. Ajouter les écouteurs d'événements aux boutons
-  setupTableActionButtons(tableId);
-}
-
-/**
- * Configure les écouteurs sur les boutons d'action du tableau
- */
-function setupTableActionButtons(tableId) {
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  if (!tbody) return;
-  
-  // Configurer les boutons d'édition
-  tbody.querySelectorAll('.btn-edit').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const itemId = this.getAttribute('data-id');
-      if (tableId === 'stockTable') {
-        editStockItem(itemId);
-      } else if (tableId === 'empruntsTable') {
-        editEmprunt(itemId);
-      }
-    });
-  });
-  
-  // Configurer les boutons de suppression
-  tbody.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const itemId = this.getAttribute('data-id');
-      if (tableId === 'stockTable') {
-        confirmDeleteItem(itemId);
-      } else if (tableId === 'empruntsTable') {
-        confirmDeleteEmprunt(itemId);
-      }
-    });
-  });
-  
-  // Configurer les boutons de visualisation
-  tbody.querySelectorAll('.btn-view').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const itemId = this.getAttribute('data-id');
-      if (tableId === 'empruntsTable') {
-        viewEmprunt(itemId);
-      }
-    });
-  });
-}
 </script>
 <?!= include('stockUIFunctions'); ?>
-<?!= include('empruntsUIFunctions'); ?>
-<!-- Système de notification -->
-<div id="notificationSystem" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;"></div>
 
-<script>
-// Système de notification
-// Système de notification amélioré
-function showNotification(message, type = 'info', duration = 5000) {
-  const notifSystem = document.getElementById('notificationSystem');
-  if (!notifSystem) return; // Vérification de sécurité
-  
-  // Créer l'élément de notification
-  const notif = document.createElement('div');
-  notif.className = `alert alert-${type} alert-dismissible fade show`;
-  notif.setAttribute('role', 'alert');
-  notif.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-  `;
-  
-  // Ajouter au système de notification
-  notifSystem.appendChild(notif);
-  
-  // Garder une référence à l'alerte Bootstrap
-  let alertInstance;
-  try {
-    alertInstance = new bootstrap.Alert(notif);
-  } catch (e) {
-    console.error("Erreur lors de la création de l'alerte:", e);
-  }
-  
-  // Supprimer l'élément manuellement après la durée spécifiée
-  if (duration > 0) {
-    setTimeout(() => {
-      try {
-        if (alertInstance) {
-          alertInstance.close();
-        } else {
-          // Suppression manuelle en dernier recours
-          if (notif.parentNode === notifSystem) {
-            notifSystem.removeChild(notif);
-          }
-        }
-      } catch (e) {
-        console.warn("Erreur lors de la fermeture de la notification:", e);
-        // Suppression silencieuse par sécurité
-        if (notif.parentNode === notifSystem) {
-          try {
-            notifSystem.removeChild(notif);
-          } catch (e2) {
-            // Ignorer silencieusement cette erreur
-          }
-        }
-      }
-    }, duration);
-  }
-  
-  // Gérer la suppression manuellement pour éviter les erreurs
-  notif.addEventListener('closed.bs.alert', function() {
-    try {
-      if (notif.parentNode === notifSystem) {
-        notifSystem.removeChild(notif);
-      }
-    } catch (e) {
-      console.warn("Erreur lors de la suppression de la notification:", e);
-      // Peut être ignorée car l'élément a probablement déjà été supprimé
-    }
-  });
-  
-  return notif;
-}
-
-// Remplacer les alertes par des notifications
-function showSuccessMessage(message) {
-  showNotification(message, 'success');
-}
-
-function showErrorMessage(message) {
-  showNotification(message, 'danger');
-}
-
-function showWarningMessage(message) {
-  showNotification(message, 'warning');
-}
-
-function showInfoMessage(message) {
-  showNotification(message, 'info');
-}
-</script>
-<!-- Système de notification -->
-<div id="notificationSystem" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;"></div>
-
-<script>
-// Système de notification amélioré
-function showNotification(message, type = 'info', duration = 5000) {
-  const notifSystem = document.getElementById('notificationSystem');
-  if (!notifSystem) return; // Vérification de sécurité
-  
-  // Créer l'élément de notification
-  const notif = document.createElement('div');
-  notif.className = `alert alert-${type} alert-dismissible fade show`;
-  notif.setAttribute('role', 'alert');
-  notif.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-  `;
-  
-  // Ajouter au système de notification
-  notifSystem.appendChild(notif);
-  
-  // Garder une référence à l'alerte Bootstrap
-  let alertInstance;
-  try {
-    alertInstance = new bootstrap.Alert(notif);
-  } catch (e) {
-    console.error("Erreur lors de la création de l'alerte:", e);
-  }
-  
-  // Supprimer l'élément manuellement après la durée spécifiée
-  if (duration > 0) {
-    setTimeout(() => {
-      try {
-        if (alertInstance) {
-          alertInstance.close();
-        } else {
-          // Suppression manuelle en dernier recours
-          if (notif.parentNode === notifSystem) {
-            notifSystem.removeChild(notif);
-          }
-        }
-      } catch (e) {
-        console.warn("Erreur lors de la fermeture de la notification:", e);
-        // Suppression silencieuse par sécurité
-        if (notif.parentNode === notifSystem) {
-          try {
-            notifSystem.removeChild(notif);
-          } catch (e2) {
-            // Ignorer silencieusement cette erreur
-          }
-        }
-      }
-    }, duration);
-  }
-  
-  // Gérer la suppression manuellement pour éviter les erreurs
-  notif.addEventListener('closed.bs.alert', function() {
-    try {
-      if (notif.parentNode === notifSystem) {
-        notifSystem.removeChild(notif);
-      }
-    } catch (e) {
-      console.warn("Erreur lors de la suppression de la notification:", e);
-      // Peut être ignorée car l'élément a probablement déjà été supprimé
-    }
-  });
-  
-  return notif;
-}
-
-// Fonctions d'assistance pour les notifications
-function showSuccessMessage(message) {
-  showNotification(message, 'success');
-}
-
-function showErrorMessage(message) {
-  showNotification(message, 'danger');
-}
-
-function showWarningMessage(message) {
-  showNotification(message, 'warning');
-}
-
-function showInfoMessage(message) {
-  showNotification(message, 'info');
-}
-</script>
   </body>
 </html>
