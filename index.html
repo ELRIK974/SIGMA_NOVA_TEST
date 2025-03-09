@@ -471,12 +471,26 @@ function navigateTo(page) {
   function initializeEmpruntsPage() {
   console.log('Initialisation de la page Emprunts');
   
-  // Vérifions si la fonction d'initialisation existe dans empruntsUIFunctions
-  if (typeof window.initializeEmpruntsPage === 'function') {
-    window.initializeEmpruntsPage();
-  } else {
-    console.error("La fonction window.initializeEmpruntsPage n'est pas définie");
-    alert("Erreur lors de l'initialisation de la page des emprunts. Veuillez rafraîchir la page.");
+  try {
+    // Ajouter le bouton d'urgence directement
+    const headerDiv = document.querySelector('#empruntsPage h1');
+    if (headerDiv && !headerDiv.querySelector('.btn-danger')) {
+      const emergencyButton = document.createElement('button');
+      emergencyButton.className = 'btn btn-danger btn-sm ms-3';
+      emergencyButton.innerHTML = '<i class="fas fa-ambulance me-1"></i> Réparation d\'urgence';
+      emergencyButton.onclick = function() { runEmergencyRepair(); };
+      headerDiv.appendChild(emergencyButton);
+    }
+    
+    // Charger les données d'urgence
+    if (typeof getEmergencyData === 'function') {
+      getEmergencyData();
+    } else {
+      console.error("La fonction getEmergencyData n'est pas définie");
+    }
+  } catch (error) {
+    console.error("Erreur lors de l'initialisation de la page Emprunts:", error);
+    alert("Erreur lors de l'initialisation de la page des emprunts: " + error.message);
   }
 }
 
