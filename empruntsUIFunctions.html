@@ -87,21 +87,24 @@ window.addTestDataAndReload = function() {
       
       if (result && result.success) {
         alert('Données de test ajoutées avec succès! Nombre de lignes: ' + result.rowCount);
+        
+        // Augmenter le délai avant le rechargement à 3 secondes pour 
+        // laisser à Google Sheets le temps de se mettre à jour
+        setTimeout(function() {
+          console.log('Rechargement des données après initialisation...');
+          window.loadEmpruntsData(true); // Passer true pour forcer le diagnostic
+        }, 3000); // Augmenté de 1000ms à 3000ms
       } else {
         alert('Résultat: ' + JSON.stringify(result));
+        window.hideSpinner();
       }
-      
-      // Attendre un peu avant de recharger
-      setTimeout(function() {
-        window.loadEmpruntsData();
-      }, 1000);
     })
     .withFailureHandler(function(error) {
       window.hideSpinner();
       console.error('Erreur lors de l\'ajout de données de test:', error);
       alert('Erreur lors de l\'ajout de données de test: ' + error);
     })
-    .forceAddTestEmprunts(); // Utiliser notre nouvelle fonction
+    .forceAddTestEmprunts();
 };
 
 // Configuration des gestionnaires d'événements pour la page Emprunts
@@ -421,7 +424,85 @@ window.saveEmpruntForm = function() {
       bootstrap.Modal.getInstance(document.getElementById('empruntModal')).hide();
       
       // Recharger les données
-      window.loadEmpruntsData();
+      window.loadEmpruntsData = function(forceDiagnostic = false) {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(data) {
+      window.hideSpinner();
+      console.log('Données d\'emprunts reçues:', data);
+      
+      // Diagnostic approfondi si forcé ou en cas de problème
+      if (forceDiagnostic || !data || !data.emprunts || data.emprunts.length === 0) {
+        console.log('Diagnostic des données:', {
+          dataReceived: !!data,
+          hasEmpruntsProperty: data && 'emprunts' in data,
+          empruntsLength: data && data.emprunts ? data.emprunts.length : 0,
+          fullData: data
+        });
+      }
+      
+      if (data && data.emprunts && data.emprunts.length > 0) {
+        // Données trouvées
+        console.log(`Remplissage du tableau avec ${data.emprunts.length} emprunts`);
+        window.fillEmpruntsTable(data.emprunts);
+        window.updateEmpruntsPagination(data.pagination);
+      } else if (data && data.error) {
+        // Erreur explicite reçue du serveur
+        console.error('Erreur côté serveur:', data.error);
+        const tbody = document.querySelector('#empruntsTable tbody');
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+            <div class="alert alert-danger">
+              <p>Erreur lors de la récupération des données: ${data.error}</p>
+              <button class="btn btn-sm btn-primary mt-2" onclick="window.diagnoseEmpruntsSheet()">
+                Diagnostiquer la feuille
+              </button>
+              <button class="btn btn-sm btn-primary mt-2" onclick="window.addTestDataAndReload()">
+                Réinitialiser les données
+              </button>
+            </div>
+          </td></tr>`;
+        }
+      } else {
+        // Aucune donnée trouvée
+        console.log('Aucune donnée d\'emprunt ou tableau vide:', data);
+        
+        const tbody = document.querySelector('#empruntsTable tbody');
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+            <div class="alert alert-warning">
+              <p>Aucune donnée d'emprunt disponible.</p>
+              <p>Vous pouvez <a href="#" onclick="window.openEmpruntForm(); return false;">créer un nouvel emprunt</a> 
+              ou <button class="btn btn-primary btn-sm" onclick="window.addTestDataAndReload()">initialiser des données de test</button></p>
+            </div>
+          </td></tr>`;
+        }
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors du chargement des données d\'emprunts:', error);
+      window.hideSpinner();
+      
+      // Afficher un message plus détaillé
+      const tbody = document.querySelector('#empruntsTable tbody');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+          <div class="alert alert-danger">
+            Erreur lors du chargement des données: ${error}
+            <br>
+            <button class="btn btn-sm btn-primary mt-2" onclick="window.diagnoseEmpruntsSheet()">
+              Diagnostiquer la feuille
+            </button>
+            <button class="btn btn-sm btn-primary mt-2" onclick="window.addTestDataAndReload()">
+              Réinitialiser les données
+            </button>
+          </div>
+        </td></tr>`;
+      }
+    })
+    .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
+};
       
       // Afficher un message de succès
       alert('Emprunt enregistré avec succès !');
@@ -467,5 +548,22 @@ window.deleteEmprunt = function(empruntId) {
       alert('Erreur lors de la suppression de l\'emprunt: ' + error);
     })
     .deleteEmpruntFromUI(empruntId);
+};
+// Fonction de diagnostic pour la feuille Emprunts
+window.diagnoseEmpruntsSheet = function() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      window.hideSpinner();
+      console.log('Diagnostic de la feuille Emprunts:', result);
+      alert('Diagnostic de la feuille Emprunts:\n\n' + JSON.stringify(result, null, 2));
+    })
+    .withFailureHandler(function(error) {
+      window.hideSpinner();
+      console.error('Erreur lors du diagnostic:', error);
+      alert('Erreur lors du diagnostic: ' + error);
+    })
+    .diagnoseEmpruntsSheet();
 };
 </script>
