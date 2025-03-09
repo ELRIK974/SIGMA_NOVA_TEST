@@ -469,115 +469,191 @@ function navigateTo(page) {
   
   // Fonctions d'initialisation pour chaque page (à développer plus tard)
   function initializeEmpruntsPage() {
-  console.log('Initialisation de la page Emprunts - Méthode directe');
+  console.log('Démarrage initialisation emprunts - version sécurisée');
   
-  // Récupérer le tableau
-  const tbody = document.querySelector('#empruntsTable tbody');
-  if (tbody) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Chargement des données...</td></tr>';
-  }
-  
-  // Ajouter le bouton d'urgence
-  const headerDiv = document.querySelector('#empruntsPage h1');
-  if (headerDiv && !headerDiv.querySelector('.btn-danger')) {
-    const emergencyButton = document.createElement('button');
-    emergencyButton.className = 'btn btn-danger btn-sm ms-3';
-    emergencyButton.innerHTML = '<i class="fas fa-ambulance me-1"></i> Réparation d\'urgence';
-    emergencyButton.onclick = function() {
-      // Fonction directe de réparation
-      if (confirm("Lancement de la réparation d'urgence.\nCela va réinitialiser et recréer la feuille Emprunts.")) {
-        showSpinner();
-        google.script.run
-          .withSuccessHandler(function(result) {
-            hideSpinner();
-            alert('Réparation terminée. Rechargement des données...');
-            // Recharger la page
-            location.reload();
-          })
-          .withFailureHandler(function(error) {
-            hideSpinner();
-            alert('Erreur pendant la réparation: ' + error);
-          })
-          .forceAddTestEmprunts();
-      }
-    };
-    headerDiv.appendChild(emergencyButton);
-  }
-  
-  // Charger directement les données
-  showSpinner();
-  google.script.run
-    .withSuccessHandler(function(result) {
-      hideSpinner();
-      console.log('Données récupérées:', result);
+  try {
+    // Message de débogage visible dans la page
+    const mainContent = document.getElementById('mainContent');
+    if (mainContent) {
+      const debugMessage = document.createElement('div');
+      debugMessage.className = 'alert alert-info mb-3';
+      debugMessage.innerHTML = '<strong>Initialisation en cours...</strong> Tentative de chargement des données';
+      debugMessage.id = 'debug-message';
       
-      if (result && result.emprunts && result.emprunts.length > 0) {
-        // Remplir le tableau avec les données
-        if (tbody) {
-          tbody.innerHTML = '';
-          result.emprunts.forEach(emprunt => {
-            const row = document.createElement('tr');
-            
-            // Ajouter une classe selon le statut
-            if (emprunt.Statut === "Pas prêt") {
-              row.classList.add('table-warning');
-            } else if (emprunt.Statut === "Parti") {
-              row.classList.add('table-info');
-            } else if (emprunt.Statut === "Revenu") {
-              row.classList.add('table-success');
-            }
-            
-            row.innerHTML = `
-              <td>${emprunt.ID || ''}</td>
-              <td>${emprunt["Nom Manipulation"] || ''}</td>
-              <td>${emprunt["Date départ"] || ''} - ${emprunt["Date retour"] || ''}</td>
-              <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ''}</span></td>
-              <td>${emprunt.Emprunteur || ''}</td>
-              <td>
-                <button class="btn btn-sm btn-outline-primary me-1">
-                  <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary me-1">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            `;
-            tbody.appendChild(row);
-          });
-        }
+      // Insère avant le premier élément
+      if (mainContent.firstChild) {
+        mainContent.insertBefore(debugMessage, mainContent.firstChild);
       } else {
-        if (tbody) {
+        mainContent.appendChild(debugMessage);
+      }
+    }
+    
+    // Vérification progressive des éléments
+    const empruntsPage = document.getElementById('empruntsPage');
+    if (!empruntsPage) {
+      console.error("L'élément #empruntsPage est introuvable");
+      throw new Error("Structure HTML manquante: #empruntsPage");
+    }
+    
+    const tbody = document.querySelector('#empruntsTable tbody');
+    if (!tbody) {
+      console.error("L'élément tbody dans #empruntsTable est introuvable");
+      throw new Error("Structure HTML manquante: tbody dans #empruntsTable");
+    }
+    
+    // Indiquer le chargement dans le tableau
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"></div> Chargement des données...</td></tr>';
+    
+    // Mise à jour du message de débogage
+    const debugMsg = document.getElementById('debug-message');
+    if (debugMsg) debugMsg.innerHTML = '<strong>Chargement en cours...</strong> Récupération des données depuis le serveur';
+    
+    // Charge les données de façon sécurisée
+    google.script.run
+      .withSuccessHandler(function(result) {
+        // Mise à jour du message de débogage
+        if (debugMsg) {
+          debugMsg.className = 'alert alert-success mb-3';
+          debugMsg.innerHTML = '<strong>Chargement réussi!</strong> ' + 
+            (result && result.emprunts ? result.emprunts.length + ' emprunts récupérés' : 'Aucun emprunt disponible');
+          // Masquer le message après 3 secondes
+          setTimeout(function() { debugMsg.style.display = 'none'; }, 3000);
+        }
+        
+        // Traitement des données reçues
+        if (result && result.emprunts && result.emprunts.length > 0) {
+          // Afficher les données
+          displayEmprunts(result.emprunts);
+        } else {
+          // Message si pas de données
           tbody.innerHTML = `<tr><td colspan="6" class="text-center">
             <div class="alert alert-warning">
               Aucune donnée disponible. 
-              <button class="btn btn-primary btn-sm ms-2" onclick="initializeEmpruntsPage();">
-                Réessayer
+              <button class="btn btn-primary btn-sm ms-2" id="btnRepairEmprunts">
+                Initialiser des données de test
               </button>
             </div>
           </td></tr>`;
+          
+          // Ajouter un gestionnaire au bouton de réparation
+          const repairBtn = document.getElementById('btnRepairEmprunts');
+          if (repairBtn) {
+            repairBtn.addEventListener('click', function() {
+              repairEmpruntData();
+            });
+          }
         }
-      }
-    })
-    .withFailureHandler(function(error) {
-      hideSpinner();
-      console.error('Erreur:', error);
-      
-      if (tbody) {
+      })
+      .withFailureHandler(function(error) {
+        console.error('Erreur:', error);
+        
+        if (debugMsg) {
+          debugMsg.className = 'alert alert-danger mb-3';
+          debugMsg.innerHTML = '<strong>Erreur!</strong> ' + error;
+        }
+        
         tbody.innerHTML = `<tr><td colspan="6" class="text-center">
           <div class="alert alert-danger">
             Erreur lors du chargement des données : ${error}
-            <button class="btn btn-primary btn-sm ms-2" onclick="initializeEmpruntsPage();">
-              Réessayer
+            <button class="btn btn-primary btn-sm ms-2" id="btnRepairEmprunts">
+              Initialiser des données de test
             </button>
           </div>
         </td></tr>`;
-      }
-    })
-    .listAllEmprunts();
+        
+        // Ajouter un gestionnaire au bouton de réparation
+        const repairBtn = document.getElementById('btnRepairEmprunts');
+        if (repairBtn) {
+          repairBtn.addEventListener('click', function() {
+            repairEmpruntData();
+          });
+        }
+      })
+      .listAllEmprunts();
     
+    // Configuration des autres boutons après avoir vérifié qu'ils existent
+    setupEmpruntsButtons();
+    
+  } catch (error) {
+    console.error('Erreur initiale:', error);
+    const mainContent = document.getElementById('mainContent');
+    if (mainContent) {
+      mainContent.innerHTML = `
+        <div class="alert alert-danger">
+          <h4 class="alert-heading">Erreur de chargement</h4>
+          <p>Une erreur s'est produite lors de l'initialisation de la page des emprunts:</p>
+          <pre>${error.message}</pre>
+          <hr>
+          <button class="btn btn-primary" onclick="location.reload()">Recharger la page</button>
+        </div>
+      `;
+    }
+  }
+}
+
+// Fonctions auxiliaires pour l'initialisation des emprunts
+function displayEmprunts(emprunts) {
+  const tbody = document.querySelector('#empruntsTable tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  emprunts.forEach(emprunt => {
+    const row = document.createElement('tr');
+    
+    // Ajouter une classe selon le statut
+    if (emprunt.Statut === "Pas prêt") {
+      row.classList.add('table-warning');
+    } else if (emprunt.Statut === "Parti") {
+      row.classList.add('table-info');
+    } else if (emprunt.Statut === "Revenu") {
+      row.classList.add('table-success');
+    }
+    
+    row.innerHTML = `
+      <td>${emprunt.ID || ''}</td>
+      <td>${emprunt["Nom Manipulation"] || ''}</td>
+      <td>${emprunt["Date départ"] || ''} - ${emprunt["Date retour"] || ''}</td>
+      <td><span class="badge ${getBadgeClass(emprunt.Statut)}">${emprunt.Statut || ''}</span></td>
+      <td>${emprunt.Emprunteur || ''}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1 view-emprunt" data-id="${emprunt.ID}">
+          <i class="fas fa-eye"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary me-1 edit-emprunt" data-id="${emprunt.ID}">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger delete-emprunt" data-id="${emprunt.ID}">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  // Ajouter les gestionnaires d'événements aux boutons
+  document.querySelectorAll('.view-emprunt').forEach(btn => {
+    btn.addEventListener('click', function() {
+      alert('Visualisation de l\'emprunt: ' + this.getAttribute('data-id'));
+    });
+  });
+  
+  document.querySelectorAll('.edit-emprunt').forEach(btn => {
+    btn.addEventListener('click', function() {
+      alert('Édition de l\'emprunt: ' + this.getAttribute('data-id'));
+    });
+  });
+  
+  document.querySelectorAll('.delete-emprunt').forEach(btn => {
+    btn.addEventListener('click', function() {
+      if (confirm('Êtes-vous sûr de vouloir supprimer cet emprunt?')) {
+        deleteEmprunt(this.getAttribute('data-id'));
+      }
+    });
+  });
+}
+
+function setupEmpruntsButtons() {
   // Configurer le bouton "Nouvel emprunt"
   const btnNewEmprunt = document.getElementById('btnNouvelEmprunt');
   if (btnNewEmprunt) {
@@ -603,8 +679,13 @@ function navigateTo(page) {
         if (retourInput) retourInput.value = returnDateFormatted;
         
         // Afficher le modal
-        const modal = new bootstrap.Modal(empruntModal);
-        modal.show();
+        try {
+          const modal = new bootstrap.Modal(empruntModal);
+          modal.show();
+        } catch (error) {
+          console.error("Erreur d'affichage du modal:", error);
+          alert("Impossible d'afficher le formulaire d'emprunt. Erreur: " + error.message);
+        }
       } else {
         alert("Le formulaire d'emprunt n'est pas disponible");
       }
@@ -647,8 +728,12 @@ function navigateTo(page) {
             // Fermer le modal
             const empruntModal = document.getElementById('empruntModal');
             if (empruntModal) {
-              const modalInstance = bootstrap.Modal.getInstance(empruntModal);
-              if (modalInstance) modalInstance.hide();
+              try {
+                const modalInstance = bootstrap.Modal.getInstance(empruntModal);
+                if (modalInstance) modalInstance.hide();
+              } catch (error) {
+                console.error("Erreur lors de la fermeture du modal:", error);
+              }
             }
             
             // Afficher un message de succès
@@ -669,9 +754,45 @@ function navigateTo(page) {
     });
   }
 }
+
+function repairEmpruntData() {
+  if (confirm("Voulez-vous réinitialiser et créer de nouvelles données de test pour les emprunts?")) {
+    showSpinner();
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideSpinner();
+        alert('Réparation terminée. Rechargement des données...');
+        initializeEmpruntsPage();
+      })
+      .withFailureHandler(function(error) {
+        hideSpinner();
+        alert('Erreur pendant la réparation: ' + error);
+      })
+      .forceAddTestEmprunts();
+  }
+}
+
+function deleteEmprunt(id) {
+  showSpinner();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideSpinner();
+      if (result) {
+        alert('Emprunt supprimé avec succès');
+        initializeEmpruntsPage();
+      } else {
+        alert('Erreur lors de la suppression de l\'emprunt');
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideSpinner();
+      alert('Erreur: ' + error);
+    })
+    .deleteEmpruntFromUI(id);
+}
 </script>
 <?!= include('stockUIFunctions'); ?>
-<?!= include('empruntsUIFunctions'); ?>
+
 
   </body>
 </html>
