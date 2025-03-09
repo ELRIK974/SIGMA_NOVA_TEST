@@ -1,5 +1,3 @@
-<!-- Fonctions pour la page Gestion des Emprunts -->
-<script>
 // Variables globales pour la page Emprunts
 window.empruntsCurrentPage = 1;
 window.empruntsPageSize = 10;
@@ -12,6 +10,16 @@ window.initializeEmpruntsPage = function() {
   console.log('Initialisation de la page Emprunts - DÉBUT');
   
   try {
+    // Ajout d'un bouton de diagnostic direct dans l'interface
+    const headerElement = document.querySelector('#empruntsPage h1');
+    if (headerElement) {
+      const diagButton = document.createElement('button');
+      diagButton.className = 'btn btn-info btn-sm ms-3';
+      diagButton.innerHTML = '<i class="fas fa-stethoscope me-1"></i> Diagnostic complet';
+      diagButton.onclick = runFullDiagnostic;
+      headerElement.appendChild(diagButton);
+    }
+    
     // Chargement initial des données
     console.log('Appel de loadEmpruntsData()');
     window.loadEmpruntsData();
@@ -27,10 +35,75 @@ window.initializeEmpruntsPage = function() {
   }
 };
 
-// Fonction pour charger les données des emprunts
+// Fonction de diagnostic complète
+function runFullDiagnostic() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      window.hideSpinner();
+      console.log('Résultat du diagnostic complet:', result);
+      
+      let message = "Résultat du diagnostic:\n\n";
+      message += "Étapes:\n" + result.steps.join("\n");
+      
+      if (result.success) {
+        message += "\n\nDiagnostic réussi! Chargement des données...";
+        alert(message);
+        // Après un diagnostic réussi, charger les données avec la méthode simplifiée
+        loadSimpleEmpruntsData();
+      } else {
+        message += "\n\nDiagnostic échoué. Veuillez contacter l'administrateur.";
+        alert(message);
+      }
+    })
+    .withFailureHandler(function(error) {
+      window.hideSpinner();
+      console.error('Erreur lors du diagnostic:', error);
+      alert('Erreur lors du diagnostic: ' + error);
+    })
+    .checkEmpruntSystem();
+}
+
+// Charger les données des emprunts de façon simplifiée
+function loadSimpleEmpruntsData() {
+  window.showSpinner();
+  
+  google.script.run
+    .withSuccessHandler(function(data) {
+      window.hideSpinner();
+      console.log('Données d\'emprunts simplifiées:', data);
+      
+      if (data.success && data.emprunts && data.emprunts.length > 0) {
+        window.fillEmpruntsTable(data.emprunts);
+        window.updateEmpruntsPagination(data.pagination);
+        alert(`${data.emprunts.length} emprunts chargés avec succès!`);
+      } else {
+        alert('Erreur: ' + (data.error || 'Aucune donnée disponible'));
+      }
+    })
+    .withFailureHandler(function(error) {
+      window.hideSpinner();
+      console.error('Erreur:', error);
+      alert('Erreur: ' + error);
+    })
+    .getSimpleEmpruntsData();
+}
+
 // Fonction pour charger les données des emprunts
 window.loadEmpruntsData = function() {
   window.showSpinner();
+  
+  // Ajoutons un bouton de diagnostic d'urgence directement dans le tableau
+  const tbody = document.querySelector('#empruntsTable tbody');
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+      <div class="alert alert-info">
+        <p>Chargement des données en cours...</p>
+        <p>Si rien ne s'affiche après quelques secondes, essayez le <button class="btn btn-warning btn-sm" onclick="runFullDiagnostic()">Diagnostic complet</button></p>
+      </div>
+    </td></tr>`;
+  }
   
   google.script.run
     .withSuccessHandler(function(data) {
@@ -38,37 +111,32 @@ window.loadEmpruntsData = function() {
       console.log('Données d\'emprunts reçues:', data);
       
       if (data && data.emprunts && data.emprunts.length > 0) {
-  window.fillEmpruntsTable(data.emprunts);
-  window.updateEmpruntsPagination(data.pagination);
-} else {
-  console.log('Aucune donnée d\'emprunt ou tableau vide:', data);
-  
-  // Afficher un message avec un bouton pour initialiser les données de test
-  const tbody = document.querySelector('#empruntsTable tbody');
-  if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">
-      <div class="alert alert-warning">
-        <p>Aucune donnée d'emprunt disponible.</p>
-        <p>Vous pouvez <a href="#" onclick="window.openEmpruntForm(); return false;">créer un nouvel emprunt</a> 
-        ou <button class="btn btn-primary btn-sm" onclick="window.addTestDataAndReload()">initialiser des données de test</button></p>
-      </div>
-    </td></tr>`;
-  }
-}
+        window.fillEmpruntsTable(data.emprunts);
+        window.updateEmpruntsPagination(data.pagination);
+      } else {
+        console.log('Aucune donnée d\'emprunt ou tableau vide:', data);
+        
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+            <div class="alert alert-warning">
+              <p>Aucune donnée d'emprunt disponible.</p>
+              <p>Vous pouvez <a href="#" onclick="window.openEmpruntForm(); return false;">créer un nouvel emprunt</a> 
+              ou <button class="btn btn-primary btn-sm" onclick="runFullDiagnostic()">exécuter le diagnostic complet</button></p>
+            </div>
+          </td></tr>`;
+        }
+      }
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement des données d\'emprunts:', error);
       window.hideSpinner();
       
-      // Afficher un message plus détaillé
-      const tbody = document.querySelector('#empruntsTable tbody');
       if (tbody) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center">
           <div class="alert alert-danger">
-            Erreur lors du chargement des données: ${error}
-            <br>
-            <button class="btn btn-sm btn-primary mt-2" onclick="window.addTestDataAndReload()">
-              Initialiser les données de test
+            <p>Erreur lors du chargement des données: ${error}</p>
+            <button class="btn btn-warning btn-sm" onclick="runFullDiagnostic()">
+              Exécuter le diagnostic complet
             </button>
           </div>
         </td></tr>`;
@@ -76,6 +144,10 @@ window.loadEmpruntsData = function() {
     })
     .getEmpruntsPageData(window.empruntsCurrentPage, window.empruntsPageSize, window.empruntsCurrentFilter, window.empruntsCurrentSearch);
 };
+
+// Le reste de votre code reste inchangé...
+// Gardez toutes les autres fonctions telles quelles depuis ici
+// setupEmpruntsEventHandlers, fillEmpruntsTable, updateEmpruntsPagination, etc.
 
 // Fonction pour ajouter des données de test et recharger
 window.addTestDataAndReload = function() {
