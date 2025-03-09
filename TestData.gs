@@ -157,6 +157,7 @@ function diagnoseEmpruntsSheet() {
 // Fonction pour diagnostiquer et forcer l'ajout de données
 function forceAddTestEmprunts() {
   try {
+    Logger.log("Début de forceAddTestEmprunts");
     const spreadsheet = getSpreadsheet();
     let sheet = spreadsheet.getSheetByName("Emprunts");
     
@@ -167,10 +168,12 @@ function forceAddTestEmprunts() {
     }
     
     // Effacer le contenu existant pour repartir de zéro
+    Logger.log("Effacement du contenu existant");
     sheet.clear();
     
     // Définir les en-têtes
     const headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"];
+    Logger.log("Ajout des en-têtes: " + headers.join(", "));
     sheet.appendRow(headers);
     
     // Créer des données de test avec des ID uniques
@@ -217,6 +220,7 @@ function forceAddTestEmprunts() {
     ];
     
     // Ajouter directement chaque emprunt sans vérifications
+    Logger.log("Ajout de " + testEmprunts.length + " emprunts");
     let addedCount = 0;
     testEmprunts.forEach(emprunt => {
       const rowArray = headers.map(header => emprunt[header] || '');
@@ -224,8 +228,17 @@ function forceAddTestEmprunts() {
       addedCount++;
     });
     
+    // Forcer la récupération après l'ajout
+    SpreadsheetApp.flush();
+    
     // Vérifier l'ajout
     const lastRow = sheet.getLastRow();
+    Logger.log("Nombre de lignes après ajout: " + lastRow);
+    
+    // Vérification supplémentaire
+    const checkData = sheet.getDataRange().getValues();
+    Logger.log("Vérification - Nombre de lignes récupérées: " + checkData.length);
+    
     return {
       success: true,
       message: `${addedCount} emprunts de test forcés avec succès`,
@@ -234,9 +247,11 @@ function forceAddTestEmprunts() {
         name: sheet.getName(),
         rows: sheet.getLastRow(),
         columns: sheet.getLastColumn()
-      }
+      },
+      firstRowSample: checkData.length > 1 ? JSON.stringify(checkData[1]) : "Pas de données"
     };
   } catch (error) {
+    Logger.log("Erreur dans forceAddTestEmprunts: " + error);
     return {
       success: false,
       error: error.toString(),
