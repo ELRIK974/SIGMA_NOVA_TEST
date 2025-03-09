@@ -37,22 +37,24 @@ window.loadEmpruntsData = function() {
       window.hideSpinner();
       console.log('Données d\'emprunts reçues:', data);
       
-      if (data && data.emprunts) {
-        window.fillEmpruntsTable(data.emprunts);
-        window.updateEmpruntsPagination(data.pagination);
-      } else {
-        console.error('Format de données incorrect:', data);
-        
-        // Afficher un message plus utile
-        const tbody = document.querySelector('#empruntsTable tbody');
-        if (tbody) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center">
-            <div class="alert alert-warning">
-              Aucune donnée d'emprunt disponible. Veuillez créer un nouvel emprunt.
-            </div>
-          </td></tr>`;
-        }
-      }
+      if (data && data.emprunts && data.emprunts.length > 0) {
+  window.fillEmpruntsTable(data.emprunts);
+  window.updateEmpruntsPagination(data.pagination);
+} else {
+  console.log('Aucune donnée d\'emprunt ou tableau vide:', data);
+  
+  // Afficher un message avec un bouton pour initialiser les données de test
+  const tbody = document.querySelector('#empruntsTable tbody');
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center">
+      <div class="alert alert-warning">
+        <p>Aucune donnée d'emprunt disponible.</p>
+        <p>Vous pouvez <a href="#" onclick="window.openEmpruntForm(); return false;">créer un nouvel emprunt</a> 
+        ou <button class="btn btn-primary btn-sm" onclick="window.addTestDataAndReload()">initialiser des données de test</button></p>
+      </div>
+    </td></tr>`;
+  }
+}
     })
     .withFailureHandler(function(error) {
       console.error('Erreur lors du chargement des données d\'emprunts:', error);
