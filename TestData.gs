@@ -154,3 +154,93 @@ function diagnoseEmpruntsSheet() {
     return "Erreur lors du diagnostic: " + error.toString();
   }
 }
+// Fonction pour diagnostiquer et forcer l'ajout de données
+function forceAddTestEmprunts() {
+  try {
+    const spreadsheet = getSpreadsheet();
+    let sheet = spreadsheet.getSheetByName("Emprunts");
+    
+    // Si la feuille n'existe pas, la créer
+    if (!sheet) {
+      Logger.log("La feuille 'Emprunts' n'existe pas, création en cours...");
+      sheet = spreadsheet.insertSheet("Emprunts");
+    }
+    
+    // Effacer le contenu existant pour repartir de zéro
+    sheet.clear();
+    
+    // Définir les en-têtes
+    const headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"];
+    sheet.appendRow(headers);
+    
+    // Créer des données de test avec des ID uniques
+    const testEmprunts = [
+      {
+        ID: Utilities.getUuid(),
+        "Nom Manipulation": "Animation Astronomie TEST",
+        "Lieu": "Collège Jean Moulin",
+        "Date départ": "01/03/2025",
+        "Date retour": "15/03/2025",
+        "Secteur": "Astronomie",
+        "Référent": "Thomas Durand",
+        "Emprunteur": "Marie Dupont",
+        "Statut": "Pas prêt",
+        "Date création": new Date().toLocaleDateString("fr-FR"),
+        "Notes": "Forcé par code"
+      },
+      {
+        ID: Utilities.getUuid(),
+        "Nom Manipulation": "Atelier Robotique TEST",
+        "Lieu": "École Primaire Voltaire",
+        "Date départ": "10/03/2025",
+        "Date retour": "12/03/2025",
+        "Secteur": "Robotique",
+        "Référent": "Sophie Martin",
+        "Emprunteur": "Sophie Martin",
+        "Statut": "Prêt",
+        "Date création": new Date().toLocaleDateString("fr-FR"),
+        "Notes": "Forcé par code"
+      },
+      {
+        ID: Utilities.getUuid(),
+        "Nom Manipulation": "Exposition Biodiversité TEST",
+        "Lieu": "Médiathèque Centrale",
+        "Date départ": "15/02/2025",
+        "Date retour": "28/02/2025",
+        "Secteur": "Environnement",
+        "Référent": "Lucas Bernard",
+        "Emprunteur": "Julie Petit",
+        "Statut": "Revenu",
+        "Date création": new Date().toLocaleDateString("fr-FR"),
+        "Notes": "Forcé par code"
+      }
+    ];
+    
+    // Ajouter directement chaque emprunt sans vérifications
+    let addedCount = 0;
+    testEmprunts.forEach(emprunt => {
+      const rowArray = headers.map(header => emprunt[header] || '');
+      sheet.appendRow(rowArray);
+      addedCount++;
+    });
+    
+    // Vérifier l'ajout
+    const lastRow = sheet.getLastRow();
+    return {
+      success: true,
+      message: `${addedCount} emprunts de test forcés avec succès`,
+      rowCount: lastRow - 1, // Nombre de lignes moins les en-têtes
+      sheetInfo: {
+        name: sheet.getName(),
+        rows: sheet.getLastRow(),
+        columns: sheet.getLastColumn()
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.toString(),
+      message: "Erreur lors de l'ajout forcé des emprunts de test"
+    };
+  }
+}
