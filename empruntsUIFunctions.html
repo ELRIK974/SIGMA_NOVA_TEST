@@ -5,25 +5,8 @@ window.empruntsCurrentFilter = 'Tous';
 window.empruntsCurrentSearch = '';
 window.empruntToDelete = null;
 
-// Initialisation de la page Emprunts - Version simplifiée pour éviter les récursions
-window.initializeEmpruntsPage = function() {
-  console.log('Initialisation de la page Emprunts - Version simplifiée');
-  
-  // Ajout d'un bouton d'urgence
-  const headerDiv = document.querySelector('#empruntsPage h1');
-  if (headerDiv) {
-    const emergencyButton = document.createElement('button');
-    emergencyButton.className = 'btn btn-danger btn-sm ms-3';
-    emergencyButton.innerHTML = '<i class="fas fa-ambulance me-1"></i> Réparation d\'urgence';
-    emergencyButton.onclick = function() { runEmergencyRepair(); };
-    headerDiv.appendChild(emergencyButton);
-  }
-  
-  // Chargement des données
-  setTimeout(function() {
-    getEmergencyData();
-  }, 500);
-};
+// Supprimer cette fonction pour éviter les conflits
+// window.initializeEmpruntsPage = function() { ... }
 
 // Fonction d'urgence pour charger les données des emprunts
 function getEmergencyData() {
@@ -71,6 +54,8 @@ function getEmergencyData() {
     })
     .listAllEmprunts();
 }
+
+// Laissez le reste du fichier inchangé
 
 // Fonction de réparation d'urgence
 function runEmergencyRepair() {
