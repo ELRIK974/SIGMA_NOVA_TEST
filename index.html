@@ -468,8 +468,9 @@ function navigateTo(page) {
   }
   
   // Fonctions d'initialisation pour chaque page (à développer plus tard)
-  function initializeEmpruntsPage() {
-  console.log('Démarrage initialisation emprunts - version sécurisée');
+  // Remplacer la fonction initializeEmpruntsPage() existante dans index.html
+function initializeEmpruntsPage() {
+  console.log('Démarrage initialisation emprunts - version robuste');
   
   try {
     // Message de débogage visible dans la page
@@ -480,7 +481,7 @@ function navigateTo(page) {
       debugMessage.innerHTML = '<strong>Initialisation en cours...</strong> Tentative de chargement des données';
       debugMessage.id = 'debug-message';
       
-      // Insère avant le premier élément
+      // Insère au début de la page
       if (mainContent.firstChild) {
         mainContent.insertBefore(debugMessage, mainContent.firstChild);
       } else {
@@ -488,7 +489,7 @@ function navigateTo(page) {
       }
     }
     
-    // Vérification progressive des éléments
+    // Vérification des éléments essentiels
     const empruntsPage = document.getElementById('empruntsPage');
     if (!empruntsPage) {
       console.error("L'élément #empruntsPage est introuvable");
@@ -571,7 +572,7 @@ function navigateTo(page) {
       })
       .listAllEmprunts();
     
-    // Configuration des autres boutons après avoir vérifié qu'ils existent
+    // Configuration des boutons
     setupEmpruntsButtons();
     
   } catch (error) {
@@ -591,7 +592,7 @@ function navigateTo(page) {
   }
 }
 
-// Fonctions auxiliaires pour l'initialisation des emprunts
+// Fonctions auxiliaires à ajouter également
 function displayEmprunts(emprunts) {
   const tbody = document.querySelector('#empruntsTable tbody');
   if (!tbody) return;
@@ -658,7 +659,6 @@ function setupEmpruntsButtons() {
   const btnNewEmprunt = document.getElementById('btnNouvelEmprunt');
   if (btnNewEmprunt) {
     btnNewEmprunt.addEventListener('click', function() {
-      // Trouver le modal
       const empruntModal = document.getElementById('empruntModal');
       if (empruntModal) {
         // Réinitialiser le formulaire
@@ -671,7 +671,7 @@ function setupEmpruntsButtons() {
         const departInput = document.getElementById('empruntDateDepart');
         if (departInput) departInput.value = todayFormatted;
         
-        // Définir une date par défaut pour le retour (aujourd'hui + 14 jours)
+        // Définir date de retour par défaut (aujourd'hui + 14 jours)
         const returnDate = new Date();
         returnDate.setDate(returnDate.getDate() + 14);
         const returnDateFormatted = returnDate.toISOString().split('T')[0];
@@ -708,8 +708,8 @@ function setupEmpruntsButtons() {
         ID: document.getElementById('empruntId').value,
         "Nom Manipulation": document.getElementById('empruntNom').value,
         Lieu: document.getElementById('empruntLieu').value,
-        "Date départ": document.getElementById('empruntDateDepart').value, // Format YYYY-MM-DD
-        "Date retour": document.getElementById('empruntDateRetour').value, // Format YYYY-MM-DD
+        "Date départ": document.getElementById('empruntDateDepart').value,
+        "Date retour": document.getElementById('empruntDateRetour').value,
         Secteur: document.getElementById('empruntSecteur').value,
         Référent: document.getElementById('empruntReferent').value,
         Emprunteur: document.getElementById('empruntEmprunteur').value,
