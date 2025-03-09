@@ -182,78 +182,44 @@ function getStockCSVExport() {
 // Obtenir les données pour la page Emprunts avec pagination
 function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
   try {
-    // Conversion et validation des paramètres
-    page = Math.max(1, parseInt(page) || 1);
-    pageSize = Math.max(1, parseInt(pageSize) || 10);
+    // Récupérer tous les emprunts
+    const emprunts = getAllEmprunts();
+    let filteredEmprunts = emprunts;
     
-    // Récupération des données avec traçage
-    console.log("Début getEmpruntsPageData - récupération des emprunts");
-    let emprunts = [];
-    
-    try {
-      emprunts = getAllEmprunts();
-      console.log(`getAllEmprunts a retourné ${emprunts.length} éléments`);
-      
-      if (!Array.isArray(emprunts)) {
-        console.error("getAllEmprunts n'a pas retourné un tableau:", emprunts);
-        emprunts = [];
-      }
-    } catch (err) {
-      console.error("Erreur dans getAllEmprunts:", err);
-      emprunts = [];
+    // Appliquer le filtre par statut si spécifié
+    if (filterStatus && filterStatus !== 'Tous') {
+      filteredEmprunts = filteredEmprunts.filter(emp => emp.Statut === filterStatus);
     }
     
-    // Création d'un filtre robuste
-    const filteredEmprunts = emprunts.filter(emp => {
-      if (!emp) return false;
-      
-      // Filtre par statut
-      if (filterStatus && filterStatus !== 'Tous') {
-        if (emp.Statut !== filterStatus) return false;
-      }
-      
-      // Filtre par recherche
-      if (searchTerm && searchTerm.trim() !== '') {
-        const term = searchTerm.toLowerCase().trim();
-        const nomMatch = emp["Nom Manipulation"] && 
-                        emp["Nom Manipulation"].toString().toLowerCase().includes(term);
-        const empMatch = emp.Emprunteur && 
-                        emp.Emprunteur.toString().toLowerCase().includes(term);
-        
-        if (!nomMatch && !empMatch) return false;
-      }
-      
-      return true;
-    });
+    // Appliquer le filtre de recherche si spécifié
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
+      filteredEmprunts = filteredEmprunts.filter(emp => 
+        (emp["Nom Manipulation"] && emp["Nom Manipulation"].toLowerCase().includes(term)) || 
+        (emp.Emprunteur && emp.Emprunteur.toLowerCase().includes(term))
+      );
+    }
     
-    console.log(`Après filtrage: ${filteredEmprunts.length} emprunts`);
-    
-    // Calcul de la pagination
+    // Calculer le nombre total de pages
     const totalItems = filteredEmprunts.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    const validPage = Math.min(page, totalPages);
-    const startIndex = (validPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const paginatedItems = filteredEmprunts.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalItems / pageSize) || 1; // Au moins 1 page même si vide
     
-    console.log(`Pagination: page ${validPage}/${totalPages}, éléments ${startIndex}-${endIndex}/${totalItems}`);
+    // Extraction pour la pagination
+    const startIndex = (page - 1) * pageSize;
+    const paginatedItems = filteredEmprunts.slice(startIndex, startIndex + pageSize);
     
-    // Construction du résultat avec structure garantie
-    const result = {
+    // Retourner les données et les informations de pagination
+    return {
       emprunts: paginatedItems,
       pagination: {
-        currentPage: validPage,
+        currentPage: page,
         pageSize: pageSize,
         totalItems: totalItems,
         totalPages: totalPages
       }
     };
-    
-    console.log("Fin getEmpruntsPageData - résultat:", result);
-    return result;
   } catch (error) {
-    console.error("Erreur globale dans getEmpruntsPageData:", error);
-    // Retourner une structure valide même en cas d'erreur
+    console.error("Erreur dans getEmpruntsPageData:", error);
     return {
       emprunts: [],
       pagination: {
@@ -291,93 +257,7 @@ function saveEmpruntFromUI(empruntData) {
     return null;
   }
 }
-// Obtenir un emprunt spécifique pour l'édition
-function getEmpruntForEdit(id) {
-  return getEmpruntById(id);
-}
-
-// Obtenir un emprunt spécifique pour la visualisation
-function getEmpruntForView(id) {
-  return getEmpruntById(id);
-}
-/**
- * Fonction de diagnostic spécifique pour la page Emprunts
- */
-function diagnosticEmprunts() {
-  try {
-    // Vérifier l'accès à la feuille
-    const sheet = getSheetByName("Emprunts");
-    let sheetInfo = { exists: false };
-    
-    if (sheet) {
-      const data = sheet.getDataRange().getValues();
-      sheetInfo = {
-        exists: true,
-        rowCount: data.length,
-        headers: data.length > 0 ? data[0] : [],
-        sample: data.length > 1 ? data.slice(1, Math.min(4, data.length)) : []
-      };
-    }
-    
-    // Tester la fonction getAllEmprunts
-    let empruntsData;
-    let error = null;
-    
-    try {
-      empruntsData = getAllEmprunts();
-    } catch (e) {
-      error = e.toString();
-    }
-    
-    // Tester addTestEmprunts
-    let testResult;
-    try {
-      testResult = addTestEmprunts();
-    } catch (e) {
-      testResult = "Erreur: " + e.toString();
-    }
-    
-    return {
-      timeStamp: new Date().toISOString(),
-      sheetInfo: sheetInfo,
-      empruntsData: {
-        type: typeof empruntsData,
-        isArray: Array.isArray(empruntsData),
-        length: Array.isArray(empruntsData) ? empruntsData.length : 0,
-        firstItem: Array.isArray(empruntsData) && empruntsData.length > 0 ? empruntsData[0] : null,
-        error: error
-      },
-      testResult: testResult
-    };
-  } catch (error) {
-    return {
-      error: error.toString(),
-      stack: error.stack
-    };
-  }
-}
-/**
- * Fonction pour invalider le cache de données côté client
- */
-function invalidateDataCache(sheetName) {
-  try {
-    // Appel à la fonction dans Database.gs
-    if (typeof window.invalidateDataCache === 'function') {
-      window.invalidateDataCache(sheetName);
-    } else {
-      // Si la fonction n'existe pas encore, on la crée
-      delete dataCache[sheetName];
-    }
-    return {
-      success: true,
-      message: `Cache invalidé pour ${sheetName}`,
-      timestamp: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error(`Erreur lors de l'invalidation du cache pour ${sheetName}:`, error);
-    return {
-      success: false,
-      error: error.toString()
-    };
-  }
+// Supprimer un emprunt
+function deleteEmpruntFromUI(id) {
+  return deleteEmprunt(id);
 }
