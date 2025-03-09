@@ -84,15 +84,24 @@ window.addTestDataAndReload = function() {
   google.script.run
     .withSuccessHandler(function(result) {
       console.log('Résultat de l\'ajout de données de test:', result);
-      // Recharger les données
-      window.loadEmpruntsData();
+      
+      if (result && result.success) {
+        alert('Données de test ajoutées avec succès! Nombre de lignes: ' + result.rowCount);
+      } else {
+        alert('Résultat: ' + JSON.stringify(result));
+      }
+      
+      // Attendre un peu avant de recharger
+      setTimeout(function() {
+        window.loadEmpruntsData();
+      }, 1000);
     })
     .withFailureHandler(function(error) {
       window.hideSpinner();
       console.error('Erreur lors de l\'ajout de données de test:', error);
       alert('Erreur lors de l\'ajout de données de test: ' + error);
     })
-    .addTestEmprunts();
+    .forceAddTestEmprunts(); // Utiliser notre nouvelle fonction
 };
 
 // Configuration des gestionnaires d'événements pour la page Emprunts
