@@ -14,46 +14,74 @@ function getAllStock() {
 }
 
 // Obtenir les articles du stock avec pagination
-// APRÈS
 function getStockPaginated(page, pageSize, filterType, searchTerm) {
-  // Utiliser la fonction générique avec des filtres spécifiques
-  return getPagedFilteredData(
-    CONFIG.SHEETS.STOCK,
-    page,
-    pageSize,
-    item => {
-      // Combiner tous les filtres en une seule fonction
-      // 1. Filtre par type/catégorie
-      let passesTypeFilter = true;
-      if (filterType && filterType !== 'Tous') {
-        if (filterType === 'Stock critique') {
-          passesTypeFilter = Number(item.Quantité) <= Number(item["Seuil alerte"]);
-        } else {
-          passesTypeFilter = item.Catégorie === filterType;
-        }
+  try {
+    const allItems = getAllStock();
+    let filteredItems = allItems;
+    
+    // Appliquer le filtre par type/catégorie si spécifié
+    if (filterType && filterType !== 'Tous') {
+      if (filterType === 'Stock critique') {
+        // Filtre spécial pour les articles en stock critique
+        filteredItems = filteredItems.filter(item => 
+          Number(item.Quantité) <= Number(item["Seuil alerte"])
+        );
+      } else {
+        // Filtre normal par catégorie
+        filteredItems = filteredItems.filter(item => item.Catégorie === filterType);
       }
-      
-      // 2. Filtre par terme de recherche
-      let passesSearchFilter = true;
-      if (searchTerm && searchTerm.trim() !== '') {
-        const term = searchTerm.toLowerCase().trim();
-        passesSearchFilter = (
+    }
+    
+    // Appliquer le filtre de recherche si spécifié
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
+      filteredItems = filteredItems.filter(item => {
+        // Recherche dans plusieurs champs pour plus d'efficacité
+        return (
           (item.Nom && item.Nom.toLowerCase().includes(term)) || 
           (item.Localisation && item.Localisation.toLowerCase().includes(term)) ||
           (item["Référence fournisseur"] && item["Référence fournisseur"].toLowerCase().includes(term))
         );
-      }
-      
-      // L'item doit passer tous les filtres
-      return passesTypeFilter && passesSearchFilter;
+      });
     }
-  );
+    
+    // Calculer le nombre total de pages
+    const totalItems = filteredItems.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1; // Au moins 1 page même si vide
+    
+    // S'assurer que la page demandée est valide
+    const validPage = Math.max(1, Math.min(page, totalPages));
+    
+    // Extraire les éléments pour la page demandée
+    const startIndex = (validPage - 1) * pageSize;
+    const paginatedItems = filteredItems.slice(startIndex, startIndex + pageSize);
+    
+    return {
+      items: paginatedItems,
+      pagination: {
+        currentPage: validPage,
+        pageSize: pageSize,
+        totalItems: totalItems,
+        totalPages: totalPages
+      }
+    };
+  } catch (error) {
+    console.error("Erreur dans getStockPaginated:", error);
+    return {
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: pageSize,
+        totalItems: 0,
+        totalPages: 1
+      }
+    };
+  }
 }
 
 // Créer un nouvel article
-// APRÈS
 function createStockItem(itemData) {
-  return performWriteOperation(CONFIG.SHEETS.STOCK, () => {
+  try {
     // Ajouter un ID unique
     itemData.ID = Utilities.getUuid();
     
@@ -63,7 +91,10 @@ function createStockItem(itemData) {
     
     // Ajouter l'article à la feuille
     return addRow(CONFIG.SHEETS.STOCK, itemData);
-  });
+  } catch (error) {
+    console.error("Erreur dans createStockItem:", error);
+    return null;
+  }
 }
 
 // Obtenir un article par son ID
@@ -79,20 +110,26 @@ function getStockItemById(id) {
 
 // Mettre à jour un article
 function updateStockItem(id, itemData) {
-  return performWriteOperation(CONFIG.SHEETS.STOCK, () => {
+  try {
     // Convertir les champs numériques
     if (itemData.Quantité) itemData.Quantité = Number(itemData.Quantité);
     if (itemData["Seuil alerte"]) itemData["Seuil alerte"] = Number(itemData["Seuil alerte"]);
     
     return updateRow(CONFIG.SHEETS.STOCK, "ID", id, itemData);
-  });
+  } catch (error) {
+    console.error("Erreur dans updateStockItem:", error);
+    return false;
+  }
 }
 
 // Supprimer un article
 function deleteStockItem(id) {
-  return performWriteOperation(CONFIG.SHEETS.STOCK, () => {
+  try {
     return deleteRow(CONFIG.SHEETS.STOCK, "ID", id);
-  });
+  } catch (error) {
+    console.error("Erreur dans deleteStockItem:", error);
+    return false;
+  }
 }
 
 // Exporter les données du stock au format CSV
