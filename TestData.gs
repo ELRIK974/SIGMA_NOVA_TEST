@@ -259,3 +259,35 @@ function forceAddTestEmprunts() {
     };
   }
 }
+// Fonction simplifiée pour lister tous les emprunts
+function listAllEmprunts() {
+  try {
+    const spreadsheet = getSpreadsheet();
+    const sheet = spreadsheet.getSheetByName("Emprunts");
+    
+    // Si la feuille n'existe pas, retourner un résultat vide
+    if (!sheet) {
+      return { emprunts: [] };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { emprunts: [] };
+    }
+    
+    const headers = data[0];
+    const rows = data.slice(1);
+    
+    const emprunts = rows.map(row => {
+      const emprunt = {};
+      headers.forEach((header, index) => {
+        emprunt[header] = row[index];
+      });
+      return emprunt;
+    });
+    
+    return { emprunts: emprunts };
+  } catch (error) {
+    return { error: error.toString(), emprunts: [] };
+  }
+}
