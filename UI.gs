@@ -183,23 +183,50 @@ function getStockCSVExport() {
 // Obtenir les données pour la page Emprunts avec pagination
 function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
   try {
+    Logger.log("Début de getEmpruntsPageData");
+    
     // Forcer la création de la feuille si elle n'existe pas
     const sheet = getSheetByName("Emprunts");
     if (!sheet) {
-      forceAddTestEmprunts(); // Utilise notre nouvelle fonction
+      Logger.log("Feuille Emprunts non trouvée, tentative de création automatique");
+      // On ne force pas la création ici pour éviter des effets de bord
+      return {
+        error: "La feuille Emprunts n'existe pas. Utilisez le bouton 'initialiser des données de test' pour la créer.",
+        emprunts: [],
+        pagination: {
+          currentPage: 1,
+          pageSize: parseInt(pageSize) || 10,
+          totalItems: 0,
+          totalPages: 1
+        }
+      };
     }
     
+    Logger.log("Récupération de la feuille Emprunts");
     // Récupérer toutes les données directement de la feuille
     const spreadsheet = getSpreadsheet();
     const empruntsSheet = spreadsheet.getSheetByName("Emprunts");
     
-    if (!empruntsSheet || empruntsSheet.getLastRow() <= 1) {
-      // Pas de données, retourner un résultat vide
+    if (!empruntsSheet) {
+      Logger.log("Erreur: la feuille Emprunts n'a pas pu être récupérée après vérification");
       return {
+        error: "Erreur lors de l'accès à la feuille Emprunts",
+        emprunts: [],
+        pagination: { currentPage: 1, pageSize: parseInt(pageSize) || 10, totalItems: 0, totalPages: 1 }
+      };
+    }
+    
+    const lastRow = empruntsSheet.getLastRow();
+    Logger.log("Nombre de lignes dans la feuille: " + lastRow);
+    
+    if (lastRow <= 1) {
+      Logger.log("Pas de données trouvées (seulement les en-têtes ou moins)");
+      return {
+        error: "Aucun emprunt trouvé dans la feuille",
         emprunts: [],
         pagination: {
           currentPage: 1,
-          pageSize: pageSize || 10,
+          pageSize: parseInt(pageSize) || 10,
           totalItems: 0,
           totalPages: 1
         }
@@ -207,23 +234,41 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     }
     
     // Récupérer toutes les données y compris les en-têtes
+    Logger.log("Récupération des données");
     const allData = empruntsSheet.getDataRange().getValues();
+    Logger.log("Données récupérées: " + allData.length + " lignes");
+    
     const headers = allData[0];
+    Logger.log("En-têtes: " + headers.join(", "));
+    
     const dataRows = allData.slice(1); // Exclure les en-têtes
+    Logger.log("Nombre de lignes de données: " + dataRows.length);
     
     // Convertir en objets
     const emprunts = dataRows.map(row => {
       const emprunt = {};
       headers.forEach((header, index) => {
-        emprunt[header] = row[index];
+        if (index < row.length) {
+          emprunt[header] = row[index];
+        } else {
+          emprunt[header] = ''; // Valeur par défaut si la cellule est manquante
+        }
       });
       return emprunt;
     });
+    
+    Logger.log("Emprunts convertis en objets: " + emprunts.length);
+    
+    // Afficher le premier emprunt pour diagnostic
+    if (emprunts.length > 0) {
+      Logger.log("Premier emprunt: " + JSON.stringify(emprunts[0]));
+    }
     
     // Filtrer les emprunts si nécessaire
     let filteredEmprunts = emprunts;
     if (filterStatus && filterStatus !== 'Tous') {
       filteredEmprunts = filteredEmprunts.filter(emp => emp.Statut === filterStatus);
+      Logger.log("Après filtrage par statut: " + filteredEmprunts.length + " emprunts");
     }
     
     if (searchTerm && searchTerm.trim() !== '') {
@@ -232,6 +277,7 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
         (emp["Nom Manipulation"] && String(emp["Nom Manipulation"]).toLowerCase().includes(term)) || 
         (emp.Emprunteur && String(emp.Emprunteur).toLowerCase().includes(term))
       );
+      Logger.log("Après filtrage par recherche: " + filteredEmprunts.length + " emprunts");
     }
     
     // Pagination
@@ -240,6 +286,8 @@ function getEmpruntsPageData(page, pageSize, filterStatus, searchTerm) {
     const validPage = Math.max(1, Math.min(page || 1, totalPages));
     const startIndex = (validPage - 1) * pageSize;
     const paginatedItems = filteredEmprunts.slice(startIndex, startIndex + pageSize);
+    
+    Logger.log("Emprunts paginés: " + paginatedItems.length);
     
     return {
       emprunts: paginatedItems,
