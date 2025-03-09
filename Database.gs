@@ -3,91 +3,32 @@
  * Ce fichier contient toutes les fonctions pour lire et écrire dans les feuilles Google Sheets
  */
 
-// Variables globales pour le cache
-let spreadsheetInstance = null;
-const sheetCache = {};
-let dataCache = {};
-
-/**
- * Obtenir le classeur (spreadsheet) avec mise en cache
- */
+// Obtenir le classeur (spreadsheet)
 function getSpreadsheet() {
   try {
-    // Réutiliser l'instance si elle existe déjà
-    if (spreadsheetInstance === null) {
-      console.log("Ouverture nouvelle instance de SpreadSheet");
-      spreadsheetInstance = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    }
-    return spreadsheetInstance;
+    return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   } catch (e) {
     console.error(`Erreur lors de l'ouverture du classeur: ${e.message}`);
-    spreadsheetInstance = null; // Réinitialiser en cas d'erreur
     throw new Error(`Impossible d'accéder à la base de données. Vérifiez l'ID et vos permissions.`);
   }
 }
 
-/**
- * Obtenir une feuille par son nom avec mise en cache
- */
+// Obtenir une feuille par son nom
 function getSheetByName(sheetName) {
   try {
-    // Vérifier si la feuille est en cache
-    if (!sheetCache[sheetName]) {
-      const sheet = getSpreadsheet().getSheetByName(sheetName);
-      if (!sheet) {
-        console.error(`La feuille "${sheetName}" n'existe pas.`);
-        return null;
-      }
-      sheetCache[sheetName] = sheet;
+    const sheet = getSpreadsheet().getSheetByName(sheetName);
+    if (!sheet) {
+      console.error(`La feuille "${sheetName}" n'existe pas.`);
+      return null;
     }
-    return sheetCache[sheetName];
+    return sheet;
   } catch (e) {
     console.error(`Erreur lors de l'accès à la feuille "${sheetName}": ${e.message}`);
-    delete sheetCache[sheetName]; // Supprimer du cache en cas d'erreur
     return null;
   }
 }
 
-/**
- * Fonction pour invalider le cache si nécessaire
- */
-function clearSheetCache(sheetName = null) {
-  if (sheetName) {
-    delete sheetCache[sheetName];
-    delete dataCache[sheetName];
-  } else {
-    // Vider tout le cache
-    Object.keys(sheetCache).forEach(key => delete sheetCache[key]);
-    Object.keys(dataCache).forEach(key => delete dataCache[key]);
-  }
-  // Réinitialiser également l'instance de SpreadSheet
-  spreadsheetInstance = null;
-}
-
-/**
- * Récupère les données en une seule opération puis met en cache
- * le résultat pour accélérer les filtres et la pagination
- */
-function getAllDataCached(sheetName, forceRefresh = false) {
-  if (!dataCache[sheetName] || forceRefresh) {
-    dataCache[sheetName] = {
-      timestamp: Date.now(),
-      data: getAllData(sheetName)
-    };
-  }
-  return dataCache[sheetName].data;
-}
-
-/**
- * Invalide le cache de données après une modification
- */
-function invalidateDataCache(sheetName) {
-  delete dataCache[sheetName];
-}
-
-/**
- * Obtenir toutes les données d'une feuille (avec en-têtes)
- */
+// Obtenir toutes les données d'une feuille (avec en-têtes)
 function getAllData(sheetName) {
   const sheet = getSheetByName(sheetName);
   
@@ -122,23 +63,7 @@ function getAllData(sheetName) {
   }
 }
 
-/**
- * Fonction générique pour les opérations d'écriture avec invalidation du cache
- */
-function performWriteOperation(sheetName, operation) {
-  try {
-    const result = operation();
-    invalidateDataCache(sheetName);
-    return result;
-  } catch (error) {
-    console.error(`Erreur lors de l'opération d'écriture dans "${sheetName}": ${error.message}`);
-    throw error;
-  }
-}
-
-/**
- * Ajouter une ligne de données dans une feuille
- */
+// Ajouter une ligne de données dans une feuille
 function addRow(sheetName, rowData) {
   const sheet = getSheetByName(sheetName);
   
@@ -163,9 +88,7 @@ function addRow(sheetName, rowData) {
   }
 }
 
-/**
- * Mettre à jour une ligne en utilisant un ID ou une autre colonne comme identifiant
- */
+// Mettre à jour une ligne en utilisant un ID ou une autre colonne comme identifiant
 function updateRow(sheetName, idColumnName, idValue, updatedData) {
   const sheet = getSheetByName(sheetName);
   
@@ -208,9 +131,7 @@ function updateRow(sheetName, idColumnName, idValue, updatedData) {
   }
 }
 
-/**
- * Supprimer une ligne par ID
- */
+// Supprimer une ligne par ID
 function deleteRow(sheetName, idColumnName, idValue) {
   const sheet = getSheetByName(sheetName);
   
@@ -247,86 +168,7 @@ function deleteRow(sheetName, idColumnName, idValue) {
   }
 }
 
-/**
- * Fonction générique pour la pagination et le filtrage des données
- */
-function getPagedFilteredData(sheetName, page, pageSize, filterFn = null, sortFn = null) {
-  try {
-    // Récupérer les données complètes (en utilisant le cache si disponible)
-    let allItems = getAllDataCached(sheetName);
-    
-    // Appliquer le filtre si spécifié
-    let filteredItems = allItems;
-    if (typeof filterFn === 'function') {
-      filteredItems = allItems.filter(filterFn);
-    }
-    
-    // Appliquer le tri si spécifié
-    if (typeof sortFn === 'function') {
-      filteredItems.sort(sortFn);
-    }
-    
-    // Calculer la pagination
-    const totalItems = filteredItems.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const validPage = Math.max(1, Math.min(page, totalPages));
-    const startIndex = (validPage - 1) * pageSize;
-    
-    // Extraire la page demandée
-    const paginatedItems = filteredItems.slice(startIndex, startIndex + pageSize);
-    
-    return {
-      items: paginatedItems,
-      pagination: {
-        currentPage: validPage,
-        pageSize: pageSize,
-        totalItems: totalItems,
-        totalPages: totalPages
-      }
-    };
-  } catch (error) {
-    console.error(`Erreur dans getPagedFilteredData(${sheetName}): ${error.message}`);
-    return {
-      items: [],
-      pagination: {
-        currentPage: 1,
-        pageSize: pageSize,
-        totalItems: 0,
-        totalPages: 1
-      }
-    };
-  }
-}
-
-/**
- * Vérifie si une feuille existe et la crée si nécessaire avec les en-têtes spécifiés
- */
-function ensureSheetExists(sheetName, headers) {
-  const spreadsheet = getSpreadsheet();
-  let sheet = spreadsheet.getSheetByName(sheetName);
-  
-  if (!sheet) {
-    console.log(`Création de la feuille manquante: ${sheetName}`);
-    sheet = spreadsheet.insertSheet(sheetName);
-    
-    // Ajouter les en-têtes
-    if (headers && headers.length > 0) {
-      sheet.appendRow(headers);
-      
-      // Mettre en forme les en-têtes (optionnel)
-      sheet.getRange(1, 1, 1, headers.length)
-        .setBackground('#f3f3f3')
-        .setFontWeight('bold')
-        .setHorizontalAlignment('center');
-    }
-  }
-  
-  return sheet;
-}
-
-/**
- * Fonction pour générer un ID unique
- */
+// Fonction pour générer un ID unique
 function generateUniqueId() {
   return Utilities.getUuid();
 }
