@@ -6,34 +6,13 @@
 // Obtenir tous les emprunts
 function getAllEmprunts() {
   try {
-    // S'assurer que la feuille Emprunts existe avec les bons en-têtes
-    const headers = ["ID", "Nom Manipulation", "Lieu", "Date départ", "Date retour", 
-                    "Secteur", "Référent", "Emprunteur", "Statut", "Date création", "Notes"];
-    
-    // Force la création de la feuille si elle n'existe pas
-    const sheet = ensureSheetExists("Emprunts", headers);
-    
-    // Vérifier s'il y a des données
-    const data = sheet.getDataRange().getValues();
-    
-    // Si la feuille est vide ou contient uniquement les en-têtes
-    if (data.length <= 1) {
-      console.log("La feuille Emprunts est vide, ajout de données de test...");
-      addTestEmprunts();
-      // Recharger les données après avoir ajouté les données de test
-      return getAllData("Emprunts") || [];
-    }
-    
-    // Récupération normale des données
-    const emprunts = getAllData("Emprunts");
-    console.log(`Récupération de ${emprunts.length} emprunts`);
-    return emprunts || [];
+    return getAllData("Emprunts");
   } catch (error) {
-    console.error("Erreur critique dans getAllEmprunts:", error);
-    // Toujours retourner un tableau, même en cas d'erreur
+    console.error("Erreur dans getAllEmprunts:", error);
     return [];
   }
 }
+
 // Créer un nouvel emprunt
 function createEmprunt(empruntData) {
   try {
@@ -77,6 +56,15 @@ function updateEmprunt(id, empruntData) {
     return updateRow("Emprunts", "ID", id, empruntData);
   } catch (error) {
     console.error("Erreur dans updateEmprunt:", error);
+    return false;
+  }
+}
+// Supprimer un emprunt
+function deleteEmprunt(id) {
+  try {
+    return deleteRow("Emprunts", "ID", id);
+  } catch (error) {
+    console.error("Erreur dans deleteEmprunt:", error);
     return false;
   }
 }
