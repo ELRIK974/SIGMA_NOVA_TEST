@@ -124,3 +124,33 @@ function checkAndCreateEmpruntsSheet() {
   Logger.log("La feuille Emprunts existe déjà");
   return "La feuille Emprunts existe déjà";
 }
+// Fonction de diagnostic pour la feuille Emprunts
+function diagnoseEmpruntsSheet() {
+  try {
+    const spreadsheet = getSpreadsheet();
+    const sheet = spreadsheet.getSheetByName("Emprunts");
+    
+    if (!sheet) {
+      return "La feuille Emprunts n'existe pas";
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    
+    if (lastRow <= 1) {
+      return "La feuille Emprunts existe mais ne contient que les en-têtes (pas de données)";
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    const data = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+    
+    return {
+      message: `La feuille Emprunts contient ${lastRow - 1} lignes de données`,
+      headers: headers,
+      rowCount: lastRow - 1,
+      firstRow: data[0]
+    };
+  } catch (error) {
+    return "Erreur lors du diagnostic: " + error.toString();
+  }
+}
