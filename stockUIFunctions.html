@@ -123,14 +123,28 @@ window.setupStockEventHandlers = function() {
 };
 
 // Remplir le tableau avec les articles
-// APRÈS
 window.fillStockTable = function(items) {
-  // Utiliser la fonction générique
-  updateTableEfficiently(
-    'stockTable', 
-    items,
-    // Rendement du HTML d'une ligne
-    (item) => `
+  const tbody = document.querySelector('#stockTable tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (!items || items.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td colspan="6" class="text-center">Aucun article trouvé</td>`;
+    tbody.appendChild(row);
+    return;
+  }
+  
+  items.forEach(item => {
+    const row = document.createElement('tr');
+    
+    // Ajouter une classe si le stock est critique
+    if (Number(item.Quantité) <= Number(item["Seuil alerte"])) {
+      row.classList.add('table-warning');
+    }
+    
+    row.innerHTML = `
       <td>${item.Nom || ''}</td>
       <td>${item.Catégorie || ''}</td>
       <td>${item.Quantité || 0}</td>
@@ -144,16 +158,24 @@ window.fillStockTable = function(items) {
           <i class="fas fa-trash"></i>
         </button>
       </td>
-    `,
-    // Application des classes conditionnelles
-    (row, item) => {
-      if (Number(item.Quantité) <= Number(item["Seuil alerte"])) {
-        row.classList.add('table-warning');
-      } else {
-        row.classList.remove('table-warning');
-      }
-    }
-  );
+    `;
+    tbody.appendChild(row);
+  });
+  
+  // Ajouter les gestionnaires d'événements pour les boutons d'action
+  document.querySelectorAll('#stockTable .btn-edit').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const itemId = this.getAttribute('data-id');
+      window.editStockItem(itemId);
+    });
+  });
+  
+  document.querySelectorAll('#stockTable .btn-delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const itemId = this.getAttribute('data-id');
+      window.confirmDeleteItem(itemId);
+    });
+  });
 };
 
 // Mettre à jour la pagination
