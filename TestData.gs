@@ -91,3 +91,36 @@ function addTestEmprunts() {
     return "Erreur: " + error.toString();
   }
 }
+// Vérifier et créer la feuille Emprunts si nécessaire
+function checkAndCreateEmpruntsSheet() {
+  const spreadsheet = getSpreadsheet();
+  let sheet = spreadsheet.getSheetByName("Emprunts");
+  
+  // Si la feuille n'existe pas, la créer
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet("Emprunts");
+    
+    // Ajouter les en-têtes
+    const headers = [
+      "ID", 
+      "Nom Manipulation", 
+      "Lieu", 
+      "Date départ", 
+      "Date retour", 
+      "Secteur", 
+      "Référent", 
+      "Emprunteur", 
+      "Statut", 
+      "Date création",
+      "Notes"
+    ];
+    
+    sheet.appendRow(headers);
+    
+    Logger.log("Feuille Emprunts créée avec succès");
+    return "Feuille Emprunts créée avec succès";
+  }
+  
+  Logger.log("La feuille Emprunts existe déjà");
+  return "La feuille Emprunts existe déjà";
+}
