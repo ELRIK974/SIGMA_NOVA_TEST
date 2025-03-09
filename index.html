@@ -475,13 +475,10 @@ function navigateTo(page) {
   if (typeof window.initializeEmpruntsPage === 'function') {
     window.initializeEmpruntsPage();
   } else {
-    // Chargement manuel des données et configuration des événements
-    try {
-      if (document.getElementById('btnNouvelEmprunt')) {
-        document.getElementById('btnNouvelEmprunt').addEventListener('click', function() {
-          alert("La création d'emprunts sera implémentée dans la prochaine étape.");
-        });
-      }
+    console.error("La fonction window.initializeEmpruntsPage n'est pas définie");
+    alert("Erreur lors de l'initialisation de la page des emprunts. Veuillez rafraîchir la page.");
+  }
+}
       
       // Charger les données des emprunts
       showSpinner();
@@ -657,6 +654,7 @@ function testStockConnectionEmergency() {
 }
 </script>
 <?!= include('stockUIFunctions'); ?>
+<?!= include('empruntsUIFunctions'); ?>
 
   </body>
 </html>
